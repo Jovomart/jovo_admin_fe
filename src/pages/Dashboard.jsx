@@ -52,7 +52,7 @@ const Dashboard = () => {
             {now.toLocaleDateString("en-NG", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </p>
           <h1 className="text-3xl font-black text-white mb-2" style={{ fontFamily: "'Playfair Display',serif" }}>
-            {greeting}, <span style={{ background: "linear-gradient(90deg,#FF8C00,#FFB347)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{displayName}</span> 👋
+            {greeting}, <span style={{ background: "linear-gradient(90deg,#FF8C00,#FFB347)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{displayName}</span> 
           </h1>
           <p className="text-white/35 text-sm">Here's what's happening on your platform today.</p>
         </div>
