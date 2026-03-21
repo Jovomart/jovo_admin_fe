@@ -1,0 +1,93 @@
+name: Build and Deploy to VERCEL
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - dev
+
+jobs:
+  build:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      image_full: ${{ steps.set-tag.outputs.full }}
+      image_tag: ${{ steps.set-tag.outputs.tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Determine Image Metadata
+        id: set-tag
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "repo=${{ secrets.DOCKER_USERNAME }}/jovo_be" >> $GITHUB_OUTPUT
+            echo "tag=latest" >> $GITHUB_OUTPUT
+            echo "full=${{ secrets.DOCKER_USERNAME }}/jovo_fe:latest" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            echo "repo=${{ secrets.DOCKER_USERNAME }}/jovo_fe_staging" >> $GITHUB_OUTPUT
+            echo "tag=latest-staging" >> $GITHUB_OUTPUT
+            echo "full=${{ secrets.DOCKER_USERNAME }}/jovo_fe_staging:latest-staging" >> $GITHUB_OUTPUT
+          else
+            echo "repo=${{ secrets.DOCKER_USERNAME }}/jovo_fe_dev" >> $GITHUB_OUTPUT
+            echo "tag=latest-dev" >> $GITHUB_OUTPUT
+            echo "full=${{ secrets.DOCKER_USERNAME }}/jovo_fe_dev:latest-dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.set-tag.outputs.full }}
+          # Speed up builds and prevent Nginx 413 errors via layer caching
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image build summary
+        run: |
+          echo "### 🐳 Docker Image Built Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ steps.set-tag.outputs.full }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    name: Deploy to VERCEL
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Trigger Vercel Deployment
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            HOOK="${{ secrets.VERCEL_DEPLOY_HOOK_PROD }}"
+            ENV="Production"
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            HOOK="${{ secrets.VERCEL_DEPLOY_HOOK_STAGING }}"
+            ENV="Staging"
+          else
+            HOOK="${{ secrets.VERCEL_DEPLOY_HOOK_DEV }}"
+            ENV="Development"
+          fi
+          
+          echo "🚀 Triggering $ENV Deployment..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$HOOK")
+          
+          if [[ "$response" =~ ^2 ]]; then
+            echo "✅ Deployment triggered successfully (HTTP $response)"
+            echo "### 🚀 $ENV Deployment" >> $GITHUB_STEP_SUMMARY
+            echo "Status: **Triggered Successfully**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Deployment failed with status code: $response"
+            exit 1
+          fi
