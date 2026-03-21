@@ -32,17 +32,17 @@ jobs:
         id: set-tag
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "repo=${{ secrets.DOCKER_USERNAME }}/jovo_be" >> $GITHUB_OUTPUT
+            echo "repo=${{ secrets.DOCKER_USERNAME }}/jovo_admin_fe" >> $GITHUB_OUTPUT
             echo "tag=latest" >> $GITHUB_OUTPUT
-            echo "full=${{ secrets.DOCKER_USERNAME }}/jovo_fe:latest" >> $GITHUB_OUTPUT
+            echo "full=${{ secrets.DOCKER_USERNAME }}/jovo_admin_fe:latest" >> $GITHUB_OUTPUT
           elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
-            echo "repo=${{ secrets.DOCKER_USERNAME }}/jovo_fe_staging" >> $GITHUB_OUTPUT
+            echo "repo=${{ secrets.DOCKER_USERNAME }}/jovo_admin_fe_staging" >> $GITHUB_OUTPUT
             echo "tag=latest-staging" >> $GITHUB_OUTPUT
-            echo "full=${{ secrets.DOCKER_USERNAME }}/jovo_fe_staging:latest-staging" >> $GITHUB_OUTPUT
+            echo "full=${{ secrets.DOCKER_USERNAME }}/jovo_admin_fe_staging:latest-staging" >> $GITHUB_OUTPUT
           else
-            echo "repo=${{ secrets.DOCKER_USERNAME }}/jovo_fe_dev" >> $GITHUB_OUTPUT
+            echo "repo=${{ secrets.DOCKER_USERNAME }}/jovo_admin_fe_dev" >> $GITHUB_OUTPUT
             echo "tag=latest-dev" >> $GITHUB_OUTPUT
-            echo "full=${{ secrets.DOCKER_USERNAME }}/jovo_fe_dev:latest-dev" >> $GITHUB_OUTPUT
+            echo "full=${{ secrets.DOCKER_USERNAME }}/jovo_admin_fe_dev:latest-dev" >> $GITHUB_OUTPUT
           fi
 
       - name: Build and Push
