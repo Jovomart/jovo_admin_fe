@@ -1,4 +1,4 @@
-name: Build and Deploy to VERCEL
+name: Build and Deploy to RENDER
 
 on:
   push:
@@ -63,26 +63,26 @@ jobs:
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
   deploy:
-    name: Deploy to VERCEL
+    name: Deploy to RENDER
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Trigger Vercel Deployment
+      - name: Trigger Render Deployment
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            HOOK="${{ secrets.VERCEL_DEPLOY_HOOK_PROD }}"
+            HOOK="${{ secrets.RENDER_DEPLOY_HOOK_PROD }}"
             ENV="Production"
           elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
-            HOOK="${{ secrets.VERCEL_DEPLOY_HOOK_STAGING }}"
+            HOOK="${{ secrets.RENDER_DEPLOY_HOOK_STAGING }}"
             ENV="Staging"
           else
-            HOOK="${{ secrets.VERCEL_DEPLOY_HOOK_DEV }}"
+            HOOK="${{ secrets.RENDER_DEPLOY_HOOK_DEV }}"
             ENV="Development"
           fi
-          
+
           echo "🚀 Triggering $ENV Deployment..."
           response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$HOOK")
-          
+
           if [[ "$response" =~ ^2 ]]; then
             echo "✅ Deployment triggered successfully (HTTP $response)"
             echo "### 🚀 $ENV Deployment" >> $GITHUB_STEP_SUMMARY
