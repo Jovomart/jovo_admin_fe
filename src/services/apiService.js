@@ -199,6 +199,65 @@ class ApiService {
     );
   }
 
+  // ── SCHOOLS ───────────────────────────────────────────────────────────────
+
+  // POST /admin/school/create-school
+  async createSchool({ schoolName, schoolCode, schoolAddress, schoolPhoneNumber, schoolEmail, schoolWebsite, schoolLogoUrl }) {
+    return this.makeRequest("/admin/school/create-school", {
+      method: "POST",
+      body: JSON.stringify({
+        school_name:         schoolName,
+        school_code:         schoolCode,
+        school_address:      schoolAddress,
+        school_phone_number: schoolPhoneNumber,
+        school_email:        schoolEmail,
+        school_website:      schoolWebsite,
+        school_logo_url:     schoolLogoUrl || "",
+      }),
+    });
+  }
+
+  // GET /admin/school/get-all-schools
+  async getAllSchools() {
+    return this.makeRequest("/admin/school/get-all-schools", { method: "GET" });
+  }
+
+  // GET /admin/school/get-school-by-id/{school_id}
+  async getSchoolById(schoolId) {
+    return this.makeRequest(`/admin/school/get-school-by-id/${schoolId}`, { method: "GET" });
+  }
+
+  // PUT /admin/school/update-school/{school_id}
+  async updateSchool(schoolId, { schoolName, schoolCode, schoolAddress, schoolPhoneNumber, schoolEmail, schoolWebsite, schoolLogoUrl }) {
+    return this.makeRequest(`/admin/school/update-school/${schoolId}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        school_name:         schoolName,
+        school_code:         schoolCode,
+        school_address:      schoolAddress,
+        school_phone_number: schoolPhoneNumber,
+        school_email:        schoolEmail,
+        school_website:      schoolWebsite,
+        school_logo_url:     schoolLogoUrl || "",
+      }),
+    });
+  }
+
+  // PATCH /admin/school/deactivate-school/{school_id}
+  async deactivateSchool(schoolId) {
+    return this.makeRequest(`/admin/school/deactivate-school/${schoolId}`, { method: "PATCH" });
+  }
+
+  // PATCH /admin/school/reactivate-school/{school_id}
+  async reactivateSchool(schoolId) {
+    return this.makeRequest(`/admin/school/reactivate-school/${schoolId}`, { method: "PATCH" });
+  }
+
+  // DELETE /admin/school/delete-school/{school_id}
+  async deleteSchool(schoolId) {
+    return this.makeRequest(`/admin/school/delete-school/${schoolId}`, { method: "DELETE" });
+  }
+
   async logout() { this.clearTokens(); }
 }
 

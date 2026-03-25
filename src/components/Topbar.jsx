@@ -7,6 +7,7 @@ import { AuthContext } from "../context/AuthContext";
 const pageTitles = {
   "/dashboard":  { title: "Dashboard",         sub: "Overview of your platform" },
   "/sellers":    { title: "Seller Management",  sub: "Manage seller applications & approved sellers" },
+  "/schools":    { title: "School Management",  sub: "Manage registered schools on the platform" },
   "/delivery":   { title: "Delivery Options",   sub: "Manage delivery settings & pricing" },
   "/settings":   { title: "Settings",           sub: "Admin account settings" },
 };

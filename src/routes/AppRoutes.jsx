@@ -7,6 +7,7 @@ import Login          from "../pages/Login";
 import ForgotPassword from "../pages/ForgotPassword";
 import Dashboard      from "../pages/Dashboard";
 import Sellers        from "../pages/Sellers";
+import Schools        from "../pages/Schools";
 import Delivery       from "../pages/Delivery";
 import Settings       from "../pages/Settings";
 
@@ -19,6 +20,7 @@ const AppRoutes = () => (
     <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/sellers"   element={<Sellers />} />
+      <Route path="/schools"   element={<Schools />} />
       <Route path="/delivery"  element={<Delivery />} />
       <Route path="/settings"  element={<Settings />} />
     </Route>

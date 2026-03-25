@@ -7,11 +7,12 @@ import {
   FiGrid, FiUsers, FiShoppingBag, FiTruck,
   FiLogOut, FiChevronRight, FiX, FiSettings,
 } from "react-icons/fi";
-import { MdStorefront } from "react-icons/md";
+import { MdStorefront, MdOutlineSchool } from "react-icons/md";
 
 const navItems = [
   { label: "Dashboard",   icon: <FiGrid size={18} />,        to: "/dashboard" },
   { label: "Sellers",     icon: <MdStorefront size={18} />,  to: "/sellers" },
+  { label: "Schools",     icon: <MdOutlineSchool size={18} />, to: "/schools" },
   { label: "Delivery",    icon: <FiTruck size={18} />,       to: "/delivery" },
   { label: "Settings",    icon: <FiSettings size={18} />,    to: "/settings" },
 ];
