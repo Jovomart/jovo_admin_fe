@@ -202,7 +202,7 @@ const Delivery = () => {
   const [loading, setLoading]     = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError]         = useState("");
-  const [modal, setModal]         = useState(null); // null | "create" | {edit object}
+  const [modal, setModal]         = useState(null);
   const [toast, setToast]         = useState(null);
 
   const showToast = (msg, type = "success") => {
@@ -210,33 +210,83 @@ const Delivery = () => {
   };
 
   const fetchOptions = async () => {
-    setLoading(true); setError("");
+    setLoading(true);
+    setError("");
     try {
-      const data = await ApiService.getDeliveryOptions();
-      setOptions(Array.isArray(data) ? data : []);
-    } catch (err) { setError(err.message); }
+      const response = await ApiService.getDeliveryOptions();
+      console.log("API Response:", response); // Debug log
+      
+      // Handle different response structures
+      let optionsArray = [];
+      if (Array.isArray(response)) {
+        optionsArray = response;
+      } else if (response && typeof response === 'object') {
+        // Try common response wrappers
+        if (response.data && Array.isArray(response.data)) {
+          optionsArray = response.data;
+        } else if (response.delivery_options && Array.isArray(response.delivery_options)) {
+          optionsArray = response.delivery_options;
+        } else if (response.options && Array.isArray(response.options)) {
+          optionsArray = response.options;
+        } else {
+          // If it's an object with numeric keys, convert to array
+          const values = Object.values(response);
+          if (values.length > 0 && Array.isArray(values[0])) {
+            optionsArray = values[0];
+          } else if (values.some(v => v && typeof v === 'object' && v.id)) {
+            optionsArray = values;
+          }
+        }
+      }
+      
+      console.log("Parsed options:", optionsArray); // Debug log
+      setOptions(optionsArray);
+    } catch (err) { 
+      console.error("Fetch error:", err);
+      setError(err.message); 
+    }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchOptions(); }, []);
+  useEffect(() => { 
+    fetchOptions(); 
+  }, []);
 
   const handleSave = async (form, editId) => {
     setActionLoading(true);
     try {
-      if (editId) await ApiService.updateDeliveryOption(editId, form);
-      else        await ApiService.createDeliveryOption(form);
-      showToast(editId ? "Delivery option updated!" : "Delivery option created!");
+      if (editId) {
+        await ApiService.updateDeliveryOption(editId, form);
+        showToast("Delivery option updated!");
+      } else {
+        await ApiService.createDeliveryOption(form);
+        showToast("Delivery option created!");
+      }
       setModal(null);
-      fetchOptions();
-    } catch (err) { showToast(err.message, "error"); }
+      // Wait a moment before refetching to ensure backend has processed
+      setTimeout(() => {
+        fetchOptions();
+      }, 500);
+    } catch (err) { 
+      console.error("Save error:", err);
+      showToast(err.message, "error"); 
+    }
     finally { setActionLoading(false); }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Deactivate this delivery option?")) return;
     setActionLoading(true);
-    try { await ApiService.deleteDeliveryOption(id); showToast("Delivery option deactivated."); fetchOptions(); }
-    catch (err) { showToast(err.message, "error"); }
+    try { 
+      await ApiService.deleteDeliveryOption(id); 
+      showToast("Delivery option deactivated."); 
+      setTimeout(() => {
+        fetchOptions();
+      }, 500);
+    } catch (err) { 
+      console.error("Delete error:", err);
+      showToast(err.message, "error"); 
+    }
     finally { setActionLoading(false); }
   };
 
@@ -245,8 +295,13 @@ const Delivery = () => {
     try {
       await ApiService.updateDeliveryOption(opt.id, { ...opt, is_available: !opt.is_available });
       showToast(`Option ${!opt.is_available ? "enabled" : "disabled"}.`);
-      fetchOptions();
-    } catch (err) { showToast(err.message, "error"); }
+      setTimeout(() => {
+        fetchOptions();
+      }, 500);
+    } catch (err) { 
+      console.error("Toggle error:", err);
+      showToast(err.message, "error"); 
+    }
     finally { setActionLoading(false); }
   };
 

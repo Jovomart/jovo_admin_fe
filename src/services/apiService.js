@@ -165,13 +165,13 @@ class ApiService {
     return this.makeRequest("/admin/delivery/options", { method: "GET" });
   }
 
-  // POST /admin/delivery/options
-  async createDeliveryOption(data) {
-    return this.makeRequest("/admin/delivery/options", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  }
+ // POST /admin/delivery/create-options  
+async createDeliveryOption(data) {
+  return this.makeRequest("/admin/delivery/create-options", {  
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
 
   // GET /admin/delivery/options/{id}
   async getDeliveryOption(deliveryId) {
