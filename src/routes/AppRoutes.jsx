@@ -10,20 +10,30 @@ import Sellers        from "../pages/Sellers";
 import Schools        from "../pages/Schools";
 import Delivery       from "../pages/Delivery";
 import Settings       from "../pages/Settings";
+import AdminInvitations from "../pages/AdminInvitations";  // Add this
+import AcceptInvitation from "../pages/AcceptInvitation";  // Add this
 
 const AppRoutes = () => (
   <Routes>
+    {/* Public routes */}
     <Route element={<AuthLayout />}>
       <Route path="/login"           element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
     </Route>
+    
+    {/* Public invitation routes (no auth required) */}
+    <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
+    
+    {/* Protected admin routes */}
     <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/sellers"   element={<Sellers />} />
       <Route path="/schools"   element={<Schools />} />
       <Route path="/delivery"  element={<Delivery />} />
       <Route path="/settings"  element={<Settings />} />
+      <Route path="/admin-invitations" element={<AdminInvitations />} />  {/* Add this */}
     </Route>
+    
     <Route path="*" element={<Navigate to="/dashboard" replace />} />
   </Routes>
 );

@@ -9,8 +9,9 @@ import { MdStorefront } from "react-icons/md";
 const normalizeList = (result) => {
   if (!result) return [];
   if (Array.isArray(result)) return result;
-  if (Array.isArray(result.data)) return result.data;
-  if (Array.isArray(result.items)) return result.items;
+  if (Array.isArray(result?.data)) return result.data;
+  if (Array.isArray(result?.items)) return result.items;
+  if (result?.data?.delivery_options && Array.isArray(result.data.delivery_options)) return result.data.delivery_options;
   return [];
 };
 
@@ -43,23 +44,44 @@ const Dashboard = () => {
   const hour    = now.getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  const [counts, setCounts]   = useState({ pending: null, approved: null });
+  const [counts, setCounts] = useState({ 
+    pending: null, 
+    approved: null, 
+    deliveryOptions: null,
+    activeDeliveryOptions: null 
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchCounts = async () => {
       setLoading(true);
       try {
-        const [p, a] = await Promise.all([
+        const [pendingSellers, approvedSellers, deliveryOptions] = await Promise.all([
           AdminApiService.getPendingSellers(),
           AdminApiService.getApprovedSellers(),
+          AdminApiService.getDeliveryOptions(), // Fetch delivery options
         ]);
+        
+        // Parse delivery options
+        let deliveryOptionsArray = normalizeList(deliveryOptions);
+        
+        // Count active delivery options
+        const activeCount = deliveryOptionsArray.filter(opt => opt.is_available === true).length;
+        
         setCounts({
-          pending:  normalizeList(p).length,
-          approved: normalizeList(a).length,
+          pending: normalizeList(pendingSellers).length,
+          approved: normalizeList(approvedSellers).length,
+          deliveryOptions: deliveryOptionsArray.length,
+          activeDeliveryOptions: activeCount,
         });
-      } catch {
-        setCounts({ pending: "—", approved: "—" });
+      } catch (error) {
+        console.error("Failed to fetch dashboard counts:", error);
+        setCounts({ 
+          pending: "—", 
+          approved: "—", 
+          deliveryOptions: "—",
+          activeDeliveryOptions: "—"
+        });
       } finally {
         setLoading(false);
       }
@@ -102,26 +124,37 @@ const Dashboard = () => {
         <h2 className="text-sm font-black uppercase tracking-[2px] text-white/30 mb-4">Platform Overview</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            icon={<MdStorefront size={20} />} label="Pending Sellers"
-            value={counts.pending ?? "—"} sub="Awaiting review"
-            color="#FF8C00" loading={loading}
+            icon={<MdStorefront size={20} />} 
+            label="Pending Sellers"
+            value={counts.pending ?? "—"} 
+            sub="Awaiting review"
+            color="#FF8C00" 
+            loading={loading}
             onClick={() => navigate("/sellers")}
           />
           <StatCard
-            icon={<MdStorefront size={20} />} label="Approved Sellers"
-            value={counts.approved ?? "—"} sub="Active on platform"
-            color="#10B981" loading={loading}
+            icon={<MdStorefront size={20} />} 
+            label="Approved Sellers"
+            value={counts.approved ?? "—"} 
+            sub="Active on platform"
+            color="#10B981" 
+            loading={loading}
             onClick={() => navigate("/sellers")}
           />
           <StatCard
-            icon={<FiTruck size={20} />} label="Delivery Options"
-            value="—" sub="Active routes"
+            icon={<FiTruck size={20} />} 
+            label="Total Delivery Options"
+            value={counts.deliveryOptions ?? "—"} 
+            sub={`${counts.activeDeliveryOptions ?? "—"} active`}
             color="#0EA5E9"
+            loading={loading}
             onClick={() => navigate("/delivery")}
           />
           <StatCard
-            icon={<FiActivity size={20} />} label="Platform Status"
-            value="Live" sub="All systems normal"
+            icon={<FiActivity size={20} />} 
+            label="Platform Status"
+            value="Live" 
+            sub="All systems normal"
             color="#B42225"
           />
         </div>

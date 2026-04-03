@@ -10,13 +10,10 @@ import {
   FiAlertCircle,
   FiCheck,
   FiShield,
-  FiUserPlus,
 } from "react-icons/fi";
 import { AuthContext } from "../context/AuthContext";
 import ApiService from "../services/apiService";
 import logo from "../assets/images/logo.png";
-
-const GENDER_OPTIONS = ["MALE", "FEMALE"];
 
 const inputCls = (err) =>
   `flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-all duration-200 ${
@@ -42,6 +39,9 @@ const Settings = () => {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+ const isSuperAdmin = admin?.email === "voltsourceinnovations@gmail.com";
+  const roleLabel = isSuperAdmin ? "Super Administrator" : "Administrator";
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -131,77 +131,6 @@ const Settings = () => {
     }
   };
 
-  // ── Create admin state ──
-  const [caForm, setCaForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    username: "",
-    password: "",
-    gender: "",
-  });
-  const [caErrors, setCaErrors] = useState({});
-  const [caLoading, setCaLoading] = useState(false);
-  const [caSuccess, setCaSuccess] = useState(false);
-  const [showCaPw, setShowCaPw] = useState(false);
-
-  const setCA = (field, value) => {
-    setCaForm((p) => ({ ...p, [field]: value }));
-    setCaErrors((p) => ({ ...p, [field]: "", general: "" }));
-  };
-
-  const validateCA = () => {
-    const e = {};
-    if (!caForm.firstName.trim()) e.firstName = "First name is required";
-    if (!caForm.lastName.trim()) e.lastName = "Last name is required";
-    if (!caForm.email.trim()) e.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(caForm.email))
-      e.email = "Enter a valid email";
-    if (!caForm.username.trim()) e.username = "Username is required";
-    if (!caForm.password) e.password = "Password is required";
-    else if (caForm.password.length < 8) e.password = "Minimum 8 characters";
-    if (!caForm.gender) e.gender = "Please select a gender";
-    setCaErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const handleCreateAdmin = async (e) => {
-    e.preventDefault();
-    if (!validateCA()) return;
-    setCaLoading(true);
-    setCaErrors({});
-    try {
-      await ApiService.createAdmin({
-        firstName: caForm.firstName.trim(),
-        lastName: caForm.lastName.trim(),
-        email: caForm.email.trim().toLowerCase(),
-        username: caForm.username.trim(),
-        password: caForm.password,
-        gender: caForm.gender,
-      });
-      setCaSuccess(true);
-      setCaForm({
-        firstName: "",
-        lastName: "",
-        email: "",
-        username: "",
-        password: "",
-        gender: "",
-      });
-      showToast("New admin account created successfully!");
-      setTimeout(() => setCaSuccess(false), 4000);
-    } catch (err) {
-      const msg = err.message.toLowerCase();
-      if (msg.includes("already exists") || msg.includes("email"))
-        setCaErrors({ email: "An admin with this email already exists." });
-      else if (msg.includes("username"))
-        setCaErrors({ username: "This username is already taken." });
-      else setCaErrors({ general: err.message || "Failed to create admin." });
-    } finally {
-      setCaLoading(false);
-    }
-  };
-
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -209,11 +138,6 @@ const Settings = () => {
 
   const tabs = [
     { key: "profile", label: "Profile", icon: <FiUser size={14} /> },
-    {
-      key: "create-admin",
-      label: "Create Admin",
-      icon: <FiUserPlus size={14} />,
-    },
     { key: "security", label: "Security", icon: <FiShield size={14} /> },
   ];
 
@@ -250,7 +174,7 @@ const Settings = () => {
           Settings
         </h1>
         <p className="text-sm text-white/30 mt-0.5">
-          Manage your admin account and platform settings
+          Manage your admin account and security settings
         </p>
       </div>
 
@@ -291,7 +215,7 @@ const Settings = () => {
               color: "#FF8C00",
             }}
           >
-            🔐 Administrator
+            🔐 {roleLabel}
           </span>
         </div>
       </div>
@@ -350,7 +274,7 @@ const Settings = () => {
               label: "Username",
               value: admin?.username ? `@${admin.username}` : "—",
             },
-            { label: "Role", value: "Administrator" },
+            { label: "Role", value: roleLabel },
             {
               label: "Gender",
               value: admin?.gender
@@ -369,280 +293,22 @@ const Settings = () => {
               <span className="text-sm font-bold text-white/70">{value}</span>
             </div>
           ))}
-          <div
-            className="pt-3 flex items-start gap-3 rounded-xl p-3 mt-2"
-            style={{
-              background: "rgba(59,130,246,0.05)",
-              border: "1px solid rgba(59,130,246,0.1)",
-            }}
-          >
-            <FiAlertCircle
-              size={14}
-              className="text-blue-400 shrink-0 mt-0.5"
-            />
-            <p className="text-[11px] text-white/25 leading-relaxed">
-              Profile editing will be available once the backend provides update
-              endpoints.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ── CREATE ADMIN TAB ── */}
-      {activeTab === "create-admin" && (
-        <div
-          className="rounded-3xl p-6 space-y-5"
-          style={{
-            background: "#0d0d14",
-            border: "1px solid rgba(255,255,255,0.06)",
-          }}
-        >
-          <div>
-            <h3
-              className="text-base font-black text-white"
-              style={{ fontFamily: "'Playfair Display',serif" }}
-            >
-              Create New Admin
-            </h3>
-            <p className="text-xs text-white/30 mt-1">
-              Create a new administrator account for the JOVO admin panel.
-            </p>
-          </div>
-
-          {/* Success banner */}
-          {caSuccess && (
+          
+          {/* Info message about invitations */}
+          {isSuperAdmin && (
             <div
-              className="flex items-center gap-3 rounded-2xl px-4 py-4"
+              className="pt-3 flex items-start gap-3 rounded-xl p-3 mt-2"
               style={{
-                background: "rgba(16,185,129,0.08)",
-                border: "1px solid rgba(16,185,129,0.2)",
+                background: "rgba(255,140,0,0.05)",
+                border: "1px solid rgba(255,140,0,0.1)",
               }}
             >
-              <div className="w-8 h-8 rounded-xl bg-emerald-400/15 flex items-center justify-center shrink-0">
-                <FiCheck size={15} className="text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-sm font-black text-emerald-400">
-                  Admin created successfully!
-                </p>
-                <p className="text-xs text-white/30 mt-0.5">
-                  The new admin can now log in with their credentials.
-                </p>
-              </div>
+              <FiUser size={14} className="text-[#FF8C00] shrink-0 mt-0.5" />
+              <p className="text-[11px] text-white/25 leading-relaxed">
+                You can invite new admins from the <strong className="text-[#FF8C00]/70">Admin Invitations</strong> page in the sidebar.
+              </p>
             </div>
           )}
-
-          {caErrors.general && (
-            <div
-              className="flex items-center gap-2 rounded-2xl px-4 py-3"
-              style={{
-                background: "rgba(239,68,68,0.08)",
-                border: "1px solid rgba(239,68,68,0.2)",
-              }}
-            >
-              <FiAlertCircle size={14} className="text-red-400 shrink-0" />
-              <p className="text-red-400 text-sm">{caErrors.general}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleCreateAdmin} className="space-y-4" noValidate>
-            {/* First + Last name */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
-                  First Name
-                </label>
-                <div className={inputCls(caErrors.firstName)}>
-                  <FiUser
-                    size={14}
-                    className={
-                      caErrors.firstName
-                        ? "text-red-400 shrink-0"
-                        : "text-white/25 shrink-0"
-                    }
-                  />
-                  <input
-                    type="text"
-                    placeholder="First"
-                    value={caForm.firstName}
-                    onChange={(e) => setCA("firstName", e.target.value)}
-                    className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20 min-w-0"
-                  />
-                </div>
-                {caErrors.firstName && (
-                  <p className="text-xs text-red-400 mt-1">
-                    {caErrors.firstName}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
-                  Last Name
-                </label>
-                <div className={inputCls(caErrors.lastName)}>
-                  <FiUser
-                    size={14}
-                    className={
-                      caErrors.lastName
-                        ? "text-red-400 shrink-0"
-                        : "text-white/25 shrink-0"
-                    }
-                  />
-                  <input
-                    type="text"
-                    placeholder="Last"
-                    value={caForm.lastName}
-                    onChange={(e) => setCA("lastName", e.target.value)}
-                    className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20 min-w-0"
-                  />
-                </div>
-                {caErrors.lastName && (
-                  <p className="text-xs text-red-400 mt-1">
-                    {caErrors.lastName}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
-                Email Address
-              </label>
-              <div className={inputCls(caErrors.email)}>
-                <FiMail
-                  size={14}
-                  className={
-                    caErrors.email
-                      ? "text-red-400 shrink-0"
-                      : "text-white/25 shrink-0"
-                  }
-                />
-                <input
-                  type="email"
-                  placeholder="admin@jovomart.com"
-                  value={caForm.email}
-                  onChange={(e) => setCA("email", e.target.value)}
-                  className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20 min-w-0"
-                />
-              </div>
-              {caErrors.email && (
-                <p className="text-xs text-red-400 mt-1">{caErrors.email}</p>
-              )}
-            </div>
-
-            {/* Username */}
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
-                Username
-              </label>
-              <div className={inputCls(caErrors.username)}>
-                <span className="text-white/25 text-sm font-bold shrink-0">
-                  @
-                </span>
-                <input
-                  type="text"
-                  placeholder="choose a username"
-                  value={caForm.username}
-                  onChange={(e) =>
-                    setCA("username", e.target.value.replace(/\s/g, ""))
-                  }
-                  className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20 min-w-0"
-                />
-              </div>
-              {caErrors.username && (
-                <p className="text-xs text-red-400 mt-1">{caErrors.username}</p>
-              )}
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
-                Password
-              </label>
-              <div className={inputCls(caErrors.password)}>
-                <FiLock
-                  size={14}
-                  className={
-                    caErrors.password
-                      ? "text-red-400 shrink-0"
-                      : "text-white/25 shrink-0"
-                  }
-                />
-                <input
-                  type={showCaPw ? "text" : "password"}
-                  placeholder="Min. 8 characters"
-                  value={caForm.password}
-                  onChange={(e) => setCA("password", e.target.value)}
-                  className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20 min-w-0"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCaPw(!showCaPw)}
-                  tabIndex={-1}
-                  className="text-white/25 hover:text-white/50 transition-colors shrink-0"
-                >
-                  {showCaPw ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-              {caErrors.password && (
-                <p className="text-xs text-red-400 mt-1">{caErrors.password}</p>
-              )}
-            </div>
-
-            {/* Gender */}
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-2">
-                Gender
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {GENDER_OPTIONS.map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => setCA("gender", g)}
-                    className={`flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-bold transition-all duration-200 ${
-                      caForm.gender === g
-                        ? "text-white border-[#FF8C00]/50"
-                        : "text-white/30 border-white/8 hover:border-white/15 hover:text-white/50"
-                    }`}
-                    style={
-                      caForm.gender === g
-                        ? { background: "rgba(255,140,0,0.1)" }
-                        : {}
-                    }
-                  >
-                    <span>{g === "MALE" ? "👨" : "👩"}</span>
-                    {g.charAt(0) + g.slice(1).toLowerCase()}
-                  </button>
-                ))}
-              </div>
-              {caErrors.gender && (
-                <p className="text-xs text-red-400 mt-1">{caErrors.gender}</p>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={caLoading}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm text-white transition-all hover:opacity-90 hover:scale-[1.005] active:scale-[0.995] disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                background: "linear-gradient(135deg,#B42225,#FF8C00)",
-                boxShadow: "0 6px 24px rgba(180,34,37,0.3)",
-              }}
-            >
-              {caLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />{" "}
-                  Creating admin...
-                </>
-              ) : (
-                <>
-                  <FiUserPlus size={15} /> Create Admin Account
-                </>
-              )}
-            </button>
-          </form>
         </div>
       )}
 

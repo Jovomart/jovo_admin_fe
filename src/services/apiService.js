@@ -11,11 +11,15 @@ class ApiService {
       : API_BASE_URL;
   }
 
-  getAccessToken()  { return localStorage.getItem("admin_access_token"); }
-  getRefreshToken() { return localStorage.getItem("admin_refresh_token"); }
+  getAccessToken() {
+    return localStorage.getItem("admin_access_token");
+  }
+  getRefreshToken() {
+    return localStorage.getItem("admin_refresh_token");
+  }
 
   storeTokens(accessToken, refreshToken = null) {
-    if (accessToken)  localStorage.setItem("admin_access_token", accessToken);
+    if (accessToken) localStorage.setItem("admin_access_token", accessToken);
     if (refreshToken) localStorage.setItem("admin_refresh_token", refreshToken);
   }
 
@@ -30,16 +34,20 @@ class ApiService {
     try {
       const payload = JSON.parse(atob(token.split(".")[1]));
       return payload.exp < Math.floor(Date.now() / 1000);
-    } catch { return true; }
+    } catch {
+      return true;
+    }
   }
 
   extractErrorMessage(data, statusCode) {
     if (data?.detail && typeof data.detail === "string") return data.detail;
     if (data?.detail?.message) return data.detail.message;
     if (Array.isArray(data?.detail))
-      return data.detail.map((e) => (e.loc ? `${e.loc.join(".")}: ${e.msg}` : e.msg)).join(", ");
+      return data.detail
+        .map((e) => (e.loc ? `${e.loc.join(".")}: ${e.msg}` : e.msg))
+        .join(", ");
     if (data?.message) return data.message;
-    if (data?.error)   return data.error;
+    if (data?.error) return data.error;
     console.error("Unrecognised error shape:", data);
     return `Request failed with status ${statusCode}`;
   }
@@ -52,6 +60,9 @@ class ApiService {
       "/admin/auth/login",
       "/admin/auth/send-forgotten-password-code",
       "/admin/auth/reset-password-with-code",
+      "/admin/invitation/view-invitation",
+      "/admin/invitation/accept-invitation",
+      "/admin/invitation/reject-invitation",
     ];
     const isPublic = publicPrefixes.some((ep) => endpoint.startsWith(ep));
 
@@ -74,10 +85,17 @@ class ApiService {
       const response = await fetch(url, config);
       const text = await response.text();
       let data;
-      try { data = JSON.parse(text); } catch { data = { message: text }; }
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { message: text };
+      }
 
       if (!response.ok) {
-        console.error(`Admin API Error [${response.status}] ${endpoint}:`, data);
+        console.error(
+          `Admin API Error [${response.status}] ${endpoint}:`,
+          data,
+        );
         if (response.status === 401) {
           this.clearTokens();
           throw new Error("Session expired. Please log in again.");
@@ -95,10 +113,24 @@ class ApiService {
   // ── AUTH ──────────────────────────────────────────────────────────────────
 
   // POST /admin/auth/create-admin
-  async createAdmin({ firstName, lastName, email, username, password, gender }) {
+  async createAdmin({
+    firstName,
+    lastName,
+    email,
+    username,
+    password,
+    gender,
+  }) {
     return this.makeRequest("/admin/auth/create-admin", {
       method: "POST",
-      body: JSON.stringify({ first_name: firstName, last_name: lastName, email, username, password, gender }),
+      body: JSON.stringify({
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        username,
+        password,
+        gender,
+      }),
     });
   }
 
@@ -109,7 +141,8 @@ class ApiService {
       body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
     });
     const tokens = response.data || response;
-    if (tokens.access_token) this.storeTokens(tokens.access_token, tokens.refresh_token);
+    if (tokens.access_token)
+      this.storeTokens(tokens.access_token, tokens.refresh_token);
     return response;
   }
 
@@ -117,7 +150,7 @@ class ApiService {
   async sendForgotPasswordCode(email) {
     return this.makeRequest(
       `/admin/auth/send-forgotten-password-code?email=${encodeURIComponent(email)}`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
@@ -125,7 +158,7 @@ class ApiService {
   async resetPasswordWithCode(email, code, newPassword, confirmPassword) {
     return this.makeRequest(
       `/admin/auth/reset-password-with-code?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&new_password=${encodeURIComponent(newPassword)}&confirm_password=${encodeURIComponent(confirmPassword)}`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
@@ -143,7 +176,9 @@ class ApiService {
 
   // GET /admin/seller/application/{id}
   async getSellerApplication(appliedSellerId) {
-    return this.makeRequest(`/admin/seller/application/${appliedSellerId}`, { method: "GET" });
+    return this.makeRequest(`/admin/seller/application/${appliedSellerId}`, {
+      method: "GET",
+    });
   }
 
   // POST /admin/seller/approve-reject
@@ -158,6 +193,75 @@ class ApiService {
     });
   }
 
+  // ── ADMIN INVITATIONS ──────────────────────────────────────────────────────────
+
+  // POST /admin/invitation/invite-admin - Create invitation (Super Admin only)
+  async inviteAdmin({ email, adminType, schoolId = null }) {
+    const body = {
+      email: email.trim().toLowerCase(),
+      admin_type: adminType, // "ADMIN" or "SUPER_ADMIN"
+    };
+    if (schoolId) body.school_id = schoolId;
+
+    return this.makeRequest("/admin/invitation/invite-admin", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  // GET /admin/invitation/invitations - Get all invitations
+  async getInvitations() {
+    return this.makeRequest("/admin/invitation/invitations", { method: "GET" });
+  }
+
+  // GET /admin/invitation/view-invitation/{token} - View invitation (Public)
+  async viewInvitation(token) {
+    return this.makeRequest(`/admin/invitation/view-invitation/${token}`, {
+      method: "GET",
+    });
+  }
+
+  // POST /admin/invitation/accept-invitation/{token} - Accept invitation (Public)
+  async acceptInvitation(token, { firstName, lastName, username, password }) {
+    return this.makeRequest(`/admin/invitation/accept-invitation/${token}`, {
+      method: "POST",
+      body: JSON.stringify({
+        first_name: firstName,
+        last_name: lastName,
+        username,
+        password,
+      }),
+    });
+  }
+
+  // POST /admin/invitation/reject-invitation/{token} - Reject invitation (Public)
+  async rejectInvitation(token, rejectionReason = "") {
+    return this.makeRequest(`/admin/invitation/reject-invitation/${token}`, {
+      method: "POST",
+      body: JSON.stringify({ rejection_reason: rejectionReason }),
+    });
+  }
+
+  // POST /admin/invitation/resend-invitation/{invitation_id} - Resend invitation (Super Admin)
+  async resendInvitation(invitationId) {
+    return this.makeRequest(
+      `/admin/invitation/resend-invitation/${invitationId}`,
+      {
+        method: "POST",
+      },
+    );
+  }
+
+  // DELETE /admin/invitation/revoke-invitation/{invitation_id} - Revoke invitation (Super Admin)
+  async revokeInvitation(invitationId) {
+    return this.makeRequest(
+      `/admin/invitation/revoke-invitation/${invitationId}`,
+      {
+        method: "DELETE",
+      },
+    );
+  }
+
   // ── DELIVERY ──────────────────────────────────────────────────────────────
 
   // GET /admin/delivery/options
@@ -165,17 +269,19 @@ class ApiService {
     return this.makeRequest("/admin/delivery/options", { method: "GET" });
   }
 
- // POST /admin/delivery/create-options  
-async createDeliveryOption(data) {
-  return this.makeRequest("/admin/delivery/create-options", {  
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-}
+  // POST /admin/delivery/create-options
+  async createDeliveryOption(data) {
+    return this.makeRequest("/admin/delivery/create-options", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
 
   // GET /admin/delivery/options/{id}
   async getDeliveryOption(deliveryId) {
-    return this.makeRequest(`/admin/delivery/options/${deliveryId}`, { method: "GET" });
+    return this.makeRequest(`/admin/delivery/options/${deliveryId}`, {
+      method: "GET",
+    });
   }
 
   // PUT /admin/delivery/options/{id}
@@ -188,31 +294,41 @@ async createDeliveryOption(data) {
 
   // DELETE /admin/delivery/options/{id}
   async deleteDeliveryOption(deliveryId) {
-    return this.makeRequest(`/admin/delivery/options/${deliveryId}`, { method: "DELETE" });
+    return this.makeRequest(`/admin/delivery/options/${deliveryId}`, {
+      method: "DELETE",
+    });
   }
 
   // GET /admin/delivery/options/available?cart_total=&total_weight=
   async getAvailableDeliveryOptions(cartTotal, totalWeight) {
     return this.makeRequest(
       `/admin/delivery/options/available?cart_total=${cartTotal}&total_weight=${totalWeight}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
   // ── SCHOOLS ───────────────────────────────────────────────────────────────
 
   // POST /admin/school/create-school
-  async createSchool({ schoolName, schoolCode, schoolAddress, schoolPhoneNumber, schoolEmail, schoolWebsite, schoolLogoUrl }) {
+  async createSchool({
+    schoolName,
+    schoolCode,
+    schoolAddress,
+    schoolPhoneNumber,
+    schoolEmail,
+    schoolWebsite,
+    schoolLogoUrl,
+  }) {
     return this.makeRequest("/admin/school/create-school", {
       method: "POST",
       body: JSON.stringify({
-        school_name:         schoolName,
-        school_code:         schoolCode,
-        school_address:      schoolAddress,
+        school_name: schoolName,
+        school_code: schoolCode,
+        school_address: schoolAddress,
         school_phone_number: schoolPhoneNumber,
-        school_email:        schoolEmail,
-        school_website:      schoolWebsite,
-        school_logo_url:     schoolLogoUrl || "",
+        school_email: schoolEmail,
+        school_website: schoolWebsite,
+        school_logo_url: schoolLogoUrl || "",
       }),
     });
   }
@@ -224,41 +340,68 @@ async createDeliveryOption(data) {
 
   // GET /admin/school/get-school-by-id/{school_id}
   async getSchoolById(schoolId) {
-    return this.makeRequest(`/admin/school/get-school-by-id/${schoolId}`, { method: "GET" });
+    return this.makeRequest(`/admin/school/get-school-by-id/${schoolId}`, {
+      method: "GET",
+    });
   }
 
   // PUT /admin/school/update-school/{school_id}
-  async updateSchool(schoolId, { schoolName, schoolCode, schoolAddress, schoolPhoneNumber, schoolEmail, schoolWebsite, schoolLogoUrl }) {
+  async updateSchool(
+    schoolId,
+    {
+      schoolName,
+      schoolCode,
+      schoolAddress,
+      schoolPhoneNumber,
+      schoolEmail,
+      schoolWebsite,
+      schoolLogoUrl,
+    },
+  ) {
     return this.makeRequest(`/admin/school/update-school/${schoolId}`, {
       method: "PUT",
       body: JSON.stringify({
-        school_name:         schoolName,
-        school_code:         schoolCode,
-        school_address:      schoolAddress,
+        school_name: schoolName,
+        school_code: schoolCode,
+        school_address: schoolAddress,
         school_phone_number: schoolPhoneNumber,
-        school_email:        schoolEmail,
-        school_website:      schoolWebsite,
-        school_logo_url:     schoolLogoUrl || "",
+        school_email: schoolEmail,
+        school_website: schoolWebsite,
+        school_logo_url: schoolLogoUrl || "",
       }),
     });
   }
 
   // PATCH /admin/school/deactivate-school/{school_id}
   async deactivateSchool(schoolId) {
-    return this.makeRequest(`/admin/school/deactivate-school/${schoolId}`, { method: "PATCH" });
+    return this.makeRequest(`/admin/school/deactivate-school/${schoolId}`, {
+      method: "PATCH",
+    });
   }
 
   // PATCH /admin/school/reactivate-school/{school_id}
   async reactivateSchool(schoolId) {
-    return this.makeRequest(`/admin/school/reactivate-school/${schoolId}`, { method: "PATCH" });
+    return this.makeRequest(`/admin/school/reactivate-school/${schoolId}`, {
+      method: "PATCH",
+    });
   }
 
   // DELETE /admin/school/delete-school/{school_id}
   async deleteSchool(schoolId) {
-    return this.makeRequest(`/admin/school/delete-school/${schoolId}`, { method: "DELETE" });
+    return this.makeRequest(`/admin/school/delete-school/${schoolId}`, {
+      method: "DELETE",
+    });
+  }
+  // GET /user/schools/public/get-all-schools
+  async getAllPublicSchools() {
+    return this.makeRequest("/user/schools/public/get-all-schools", {
+      method: "GET",
+    });
   }
 
-  async logout() { this.clearTokens(); }
+  async logout() {
+    this.clearTokens();
+  }
 }
 
 export default new ApiService();
