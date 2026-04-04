@@ -1,5 +1,5 @@
 // src/pages/Settings.jsx
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Check } from "lucide-react";
 import {
@@ -10,6 +10,9 @@ import {
   FiAlertCircle,
   FiCheck,
   FiShield,
+  FiEdit2,
+  FiSave,
+  FiX,
 } from "react-icons/fi";
 import { AuthContext } from "../context/AuthContext";
 import ApiService from "../services/apiService";
@@ -22,17 +25,193 @@ const inputCls = (err) =>
       : "border-white/8 bg-white/4 focus-within:border-[#FF8C00]/50 focus-within:bg-white/6 focus-within:shadow-[0_0_0_3px_rgba(255,140,0,0.08)]"
   }`;
 
+const ProfileEditModal = ({ profile, onClose, onSave, loading }) => {
+  const [form, setForm] = useState({
+    first_name: profile?.first_name || "",
+    last_name: profile?.last_name || "",
+    username: profile?.username || "",
+    email: profile?.email || "",
+    phone: profile?.phone || "",
+    country: profile?.country || "",
+    state: profile?.state || "",
+    city: profile?.city || "",
+    address: profile?.address || "",
+  });
+  const [errors, setErrors] = useState({});
+  const [saveLoading, setSaveLoading] = useState(false);
+
+  const handleChange = (field, value) => {
+    setForm({ ...form, [field]: value });
+    setErrors({ ...errors, [field]: "" });
+  };
+
+  const validate = () => {
+    const e = {};
+    if (!form.first_name.trim()) e.first_name = "First name is required";
+    if (!form.last_name.trim()) e.last_name = "Last name is required";
+    if (!form.username.trim()) e.username = "Username is required";
+    if (!form.email.trim()) e.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Valid email is required";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setSaveLoading(true);
+    try {
+      await onSave(form);
+      onClose();
+    } catch (err) {
+      setErrors({ general: err.message });
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)" }}>
+      <div className="w-full max-w-lg rounded-3xl border overflow-hidden"
+        style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.08)", maxHeight: "90vh", overflowY: "auto" }}>
+        
+        <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <h3 className="text-lg font-black text-white" style={{ fontFamily: "'Playfair Display',serif" }}>
+            Edit Profile
+          </h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white">
+            <FiX size={16} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {errors.general && (
+            <div className="flex items-center gap-2 rounded-xl px-4 py-3" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              <FiAlertCircle size={14} className="text-red-400" />
+              <p className="text-red-400 text-sm">{errors.general}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">First Name *</label>
+              <input type="text" value={form.first_name} onChange={(e) => handleChange("first_name", e.target.value)}
+                className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+              {errors.first_name && <p className="text-xs text-red-400 mt-1">{errors.first_name}</p>}
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Last Name *</label>
+              <input type="text" value={form.last_name} onChange={(e) => handleChange("last_name", e.target.value)}
+                className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+              {errors.last_name && <p className="text-xs text-red-400 mt-1">{errors.last_name}</p>}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Username *</label>
+            <div className="flex items-center gap-2 rounded-xl border px-4 py-2.5 border-white/10 bg-white/5 focus-within:border-[#FF8C00]/50 transition-all">
+              <span className="text-white/40 text-sm font-bold">@</span>
+              <input type="text" value={form.username} onChange={(e) => handleChange("username", e.target.value.replace(/\s/g, ""))}
+                className="flex-1 text-sm text-white outline-none bg-transparent" />
+            </div>
+            {errors.username && <p className="text-xs text-red-400 mt-1">{errors.username}</p>}
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Email *</label>
+            <input type="email" value={form.email} onChange={(e) => handleChange("email", e.target.value)}
+              className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+            {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email}</p>}
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Phone (Optional)</label>
+            <input type="tel" value={form.phone} onChange={(e) => handleChange("phone", e.target.value)}
+              className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Country</label>
+            <input type="text" value={form.country} onChange={(e) => handleChange("country", e.target.value)}
+              className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">State</label>
+              <input type="text" value={form.state} onChange={(e) => handleChange("state", e.target.value)}
+                className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">City</label>
+              <input type="text" value={form.city} onChange={(e) => handleChange("city", e.target.value)}
+                className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Address</label>
+            <textarea value={form.address} onChange={(e) => handleChange("address", e.target.value)} rows={2}
+              className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all resize-none" />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-3 rounded-xl text-sm font-bold text-white/40 bg-white/5 hover:bg-white/10 transition">
+              Cancel
+            </button>
+            <button type="submit" disabled={saveLoading}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black text-white transition-all hover:opacity-90 disabled:opacity-50"
+              style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}>
+              {saveLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FiSave size={14} />}
+              {saveLoading ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const Settings = () => {
-  const { admin, logout } = useContext(AuthContext);
+  const { admin, setAdmin, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("profile");
   const [toast, setToast] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
-  const displayName =
-    admin?.full_name ||
-    `${admin?.first_name || ""} ${admin?.last_name || ""}`.trim() ||
+  // Fetch fresh profile data from API
+  const fetchProfile = async () => {
+    setProfileLoading(true);
+    try {
+      const response = await ApiService.getAdminProfile();
+      const userData = response?.data || response;
+      setProfile(userData);
+      // Update AuthContext with fresh data
+      if (setAdmin) {
+        setAdmin(userData);
+        localStorage.setItem("admin_user", JSON.stringify(userData));
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const displayName = profile?.full_name ||
+    `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() ||
+    profile?.username ||
     admin?.username ||
     "Admin";
+  
   const initials = displayName
     .split(" ")
     .map((n) => n[0])
@@ -40,12 +219,28 @@ const Settings = () => {
     .toUpperCase()
     .slice(0, 2);
 
- const isSuperAdmin = admin?.email === "voltsourceinnovations@gmail.com";
+  const isSuperAdmin = admin?.email === "voltsourceinnovations@gmail.com";
   const roleLabel = isSuperAdmin ? "Super Administrator" : "Administrator";
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleUpdateProfile = async (formData) => {
+    try {
+      const response = await ApiService.updateAdminProfile(formData);
+      const updatedUser = response?.data || response;
+      setProfile(updatedUser);
+      if (setAdmin) {
+        setAdmin(updatedUser);
+        localStorage.setItem("admin_user", JSON.stringify(updatedUser));
+      }
+      showToast("Profile updated successfully!");
+      fetchProfile(); // Refresh to be safe
+    } catch (err) {
+      throw new Error(err.message || "Failed to update profile");
+    }
   };
 
   // ── Password reset state ──
@@ -141,6 +336,8 @@ const Settings = () => {
     { key: "security", label: "Security", icon: <FiShield size={14} /> },
   ];
 
+  const currentProfile = profile || admin;
+
   return (
     <div className="space-y-6 max-w-2xl">
       {/* Toast */}
@@ -166,6 +363,16 @@ const Settings = () => {
         </div>
       )}
 
+      {/* Edit Profile Modal */}
+      {showEditModal && (
+        <ProfileEditModal
+          profile={currentProfile}
+          onClose={() => setShowEditModal(false)}
+          onSave={handleUpdateProfile}
+          loading={profileLoading}
+        />
+      )}
+
       <div>
         <h1
           className="text-2xl font-black text-white"
@@ -178,7 +385,7 @@ const Settings = () => {
         </p>
       </div>
 
-      {/* Profile banner */}
+      {/* Profile banner with Edit button */}
       <div
         className="rounded-3xl p-5 flex items-center gap-5 relative overflow-hidden"
         style={{
@@ -199,14 +406,14 @@ const Settings = () => {
         >
           {initials}
         </div>
-        <div className="relative z-10">
+        <div className="relative z-10 flex-1">
           <p
             className="text-base font-black text-white"
             style={{ fontFamily: "'Playfair Display',serif" }}
           >
             {displayName}
           </p>
-          <p className="text-xs text-white/40">{admin?.email}</p>
+          <p className="text-xs text-white/40">{currentProfile?.email || admin?.email}</p>
           <span
             className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full mt-1 inline-block"
             style={{
@@ -218,6 +425,13 @@ const Settings = () => {
             🔐 {roleLabel}
           </span>
         </div>
+        <button
+          onClick={() => setShowEditModal(true)}
+          className="relative z-10 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90"
+          style={{ background: "rgba(255,140,0,0.15)", border: "1px solid rgba(255,140,0,0.25)", color: "#FF8C00" }}
+        >
+          <FiEdit2 size={12} /> Edit Profile
+        </button>
       </div>
 
       {/* Tabs */}
@@ -261,38 +475,53 @@ const Settings = () => {
             border: "1px solid rgba(255,255,255,0.06)",
           }}
         >
-          <h3
-            className="text-base font-black text-white mb-4"
-            style={{ fontFamily: "'Playfair Display',serif" }}
-          >
-            Account Information
-          </h3>
-          {[
-            { label: "Full Name", value: displayName },
-            { label: "Email", value: admin?.email || "—" },
-            {
-              label: "Username",
-              value: admin?.username ? `@${admin.username}` : "—",
-            },
-            { label: "Role", value: roleLabel },
-            {
-              label: "Gender",
-              value: admin?.gender
-                ? admin.gender.charAt(0) + admin.gender.slice(1).toLowerCase()
-                : "—",
-            },
-          ].map(({ label, value }) => (
-            <div
-              key={label}
-              className="flex items-center justify-between py-3 border-b"
-              style={{ borderColor: "rgba(255,255,255,0.05)" }}
+          <div className="flex items-center justify-between mb-4">
+            <h3
+              className="text-base font-black text-white"
+              style={{ fontFamily: "'Playfair Display',serif" }}
             >
-              <span className="text-xs text-white/30 font-semibold">
-                {label}
-              </span>
-              <span className="text-sm font-bold text-white/70">{value}</span>
+              Account Information
+            </h3>
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="flex items-center gap-1 text-xs font-bold text-[#FF8C00] hover:underline"
+            >
+              <FiEdit2 size={11} /> Edit
+            </button>
+          </div>
+          
+          {profileLoading ? (
+            <div className="space-y-3">
+              {[1,2,3,4,5].map(i => (
+                <div key={i} className="h-12 bg-white/5 rounded-xl animate-pulse" />
+              ))}
             </div>
-          ))}
+          ) : (
+            <>
+              {[
+                { label: "Full Name", value: displayName },
+                { label: "Email", value: currentProfile?.email || admin?.email || "—" },
+                { label: "Username", value: currentProfile?.username ? `@${currentProfile.username}` : "—" },
+                { label: "Role", value: roleLabel },
+                { label: "Phone", value: currentProfile?.phone || "—" },
+                { label: "Country", value: currentProfile?.country || "—" },
+                { label: "State", value: currentProfile?.state || "—" },
+                { label: "City", value: currentProfile?.city || "—" },
+                { label: "Address", value: currentProfile?.address || "—" },
+              ].map(({ label, value }) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between py-3 border-b"
+                  style={{ borderColor: "rgba(255,255,255,0.05)" }}
+                >
+                  <span className="text-xs text-white/30 font-semibold">
+                    {label}
+                  </span>
+                  <span className="text-sm font-bold text-white/70">{value}</span>
+                </div>
+              ))}
+            </>
+          )}
           
           {/* Info message about invitations */}
           {isSuperAdmin && (
@@ -312,7 +541,7 @@ const Settings = () => {
         </div>
       )}
 
-      {/* ── SECURITY TAB ── */}
+      {/* ── SECURITY TAB (unchanged) ── */}
       {activeTab === "security" && (
         <div
           className="rounded-3xl p-6 space-y-5"

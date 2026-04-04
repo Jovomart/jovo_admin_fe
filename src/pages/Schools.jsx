@@ -6,8 +6,47 @@ import {
   FiEdit2, FiTrash2, FiCheck, FiGlobe, FiPhone,
   FiMail, FiMapPin, FiToggleLeft, FiToggleRight,
 } from "react-icons/fi";
-import { MdOutlineSchool, MdVerified } from "react-icons/md";
-import { Eye, EyeOff } from "lucide-react";
+import { MdOutlineSchool } from "react-icons/md";
+
+/* ─── Helper function to safely extract schools array ───────── */
+const extractSchoolsArray = (data) => {
+  // If data is an array
+  if (Array.isArray(data)) return data;
+  
+  // If data has a data property that's an array
+  if (data?.data && Array.isArray(data.data)) return data.data;
+  
+  // If data has a schools property that's an array
+  if (data?.schools && Array.isArray(data.schools)) return data.schools;
+  
+  // If data.data is an object with schools array
+  if (data?.data?.schools && Array.isArray(data.data.schools)) return data.data.schools;
+  
+  // If data.data is an empty object, return empty array
+  if (data?.data && typeof data.data === 'object' && Object.keys(data.data).length === 0) {
+    return [];
+  }
+  
+  // If data.data is an object, try to extract any array property
+  if (data?.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+    for (const key in data.data) {
+      if (Array.isArray(data.data[key])) {
+        return data.data[key];
+      }
+    }
+  }
+  
+  // If data itself is an object with numeric keys (array-like)
+  if (typeof data === 'object' && !Array.isArray(data) && data !== null) {
+    const values = Object.values(data);
+    if (values.length > 0 && Array.isArray(values[0])) {
+      return values[0];
+    }
+  }
+  
+  // Default: return empty array
+  return [];
+};
 
 /* ─── Form Modal (Create / Edit) ─────────────────────────────── */
 const SchoolModal = ({ existing, onClose, onDone }) => {
@@ -62,7 +101,6 @@ const SchoolModal = ({ existing, onClose, onDone }) => {
       <div className="w-full max-w-xl rounded-3xl flex flex-col max-h-[92vh]"
         style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 30px 80px rgba(0,0,0,0.5)" }}>
 
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 shrink-0">
           <div>
             <h3 className="text-lg font-black text-white" style={{ fontFamily: "'Playfair Display',serif" }}>
@@ -76,7 +114,6 @@ const SchoolModal = ({ existing, onClose, onDone }) => {
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           {error && (
             <div className="flex items-center gap-2 rounded-2xl px-4 py-3"
@@ -130,7 +167,6 @@ const SchoolModal = ({ existing, onClose, onDone }) => {
           </div>
         </form>
 
-        {/* Footer */}
         <div className="flex gap-3 px-6 py-4 border-t border-white/5 shrink-0">
           <button type="button" onClick={onClose}
             className="flex-1 py-3 rounded-xl text-sm font-bold text-white/40 bg-white/5 hover:bg-white/8 transition">
@@ -203,6 +239,7 @@ const SchoolCard = ({ school, onEdit, onDelete, onToggleStatus }) => {
   const handleToggle = async () => {
     setToggling(true);
     try { await onToggleStatus(school); }
+    catch (err) { console.error("Toggle error:", err); }
     finally { setToggling(false); }
   };
 
@@ -210,9 +247,7 @@ const SchoolCard = ({ school, onEdit, onDelete, onToggleStatus }) => {
     <div className="rounded-2xl p-5 border border-white/5 hover:border-white/10 transition-all duration-200"
       style={{ background: "#0d0d14", boxShadow: "0 2px 12px rgba(0,0,0,0.2)" }}>
 
-      {/* Top row */}
       <div className="flex items-start gap-3 mb-4">
-        {/* Logo or initials */}
         <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
           style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}>
           {school.school_logo_url
@@ -239,7 +274,6 @@ const SchoolCard = ({ school, onEdit, onDelete, onToggleStatus }) => {
         </div>
       </div>
 
-      {/* Details */}
       <div className="space-y-2 mb-4">
         {school.school_address && (
           <p className="flex items-start gap-2 text-xs text-white/35">
@@ -264,7 +298,6 @@ const SchoolCard = ({ school, onEdit, onDelete, onToggleStatus }) => {
         )}
       </div>
 
-      {/* Actions */}
       <div className="flex items-center gap-2 pt-3 border-t border-white/5">
         <button onClick={() => onEdit(school)}
           className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-[#FF8C00] transition-colors px-3 py-2 rounded-xl hover:bg-[#FF8C00]/5">
@@ -299,15 +332,24 @@ const Schools = () => {
   const [showModal, setShowModal]     = useState(false);
   const [editSchool, setEditSchool]   = useState(null);
   const [deleteSchool, setDeleteSchool] = useState(null);
-  const [filter, setFilter]           = useState("all"); // all | active | inactive
+  const [filter, setFilter]           = useState("all");
 
   const fetchSchools = async () => {
-    setLoading(true); setError("");
+    setLoading(true);
+    setError("");
     try {
       const data = await ApiService.getAllSchools();
-      setSchools(Array.isArray(data) ? data : data?.data || data?.schools || []);
-    } catch (err) { setError(err.message || "Failed to load schools."); }
-    finally { setLoading(false); }
+      console.log("Raw API response:", data);
+      const schoolsArray = extractSchoolsArray(data);
+      console.log("Extracted schools:", schoolsArray);
+      setSchools(schoolsArray);
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setError(err.message || "Failed to load schools.");
+      setSchools([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchSchools(); }, []);
@@ -315,12 +357,28 @@ const Schools = () => {
   const handleToggleStatus = async (school) => {
     const isActive = school.is_active !== false;
     const id = school.id || school._id;
-    if (isActive) await ApiService.deactivateSchool(id);
-    else          await ApiService.reactivateSchool(id);
-    fetchSchools();
+    try {
+      if (isActive) {
+        await ApiService.deactivateSchool(id);
+      } else {
+        await ApiService.reactivateSchool(id);
+      }
+      // Wait a moment before refreshing
+      setTimeout(() => {
+        fetchSchools();
+      }, 500);
+    } catch (err) {
+      console.error("Toggle status error:", err);
+      setError(err.message || "Failed to update school status");
+      // Refresh anyway to sync with backend
+      fetchSchools();
+    }
   };
 
-  const filtered = schools.filter((s) => {
+  // Safe filtering - ensures schools is always an array
+  const safeSchools = Array.isArray(schools) ? schools : [];
+  
+  const filtered = safeSchools.filter((s) => {
     const q = search.toLowerCase();
     const matchSearch = !q ||
       (s.school_name || "").toLowerCase().includes(q) ||
@@ -333,8 +391,11 @@ const Schools = () => {
     return matchSearch && matchFilter;
   });
 
+  const activeCount = safeSchools.filter(s => s.is_active !== false).length;
+  const inactiveCount = safeSchools.filter(s => s.is_active === false).length;
+
   return (
-    <div className="space-y-5 max-w-5xl mx-auto">
+    <div className="space-y-5 max-w-5xl mx-auto px-4 sm:px-6">
 
       {/* Modals */}
       {showModal && (
@@ -357,11 +418,11 @@ const Schools = () => {
             School Management
           </h2>
           <p className="text-xs text-white/30 mt-0.5">
-            {schools.length} school{schools.length !== 1 ? "s" : ""} registered
+            {safeSchools.length} school{safeSchools.length !== 1 ? "s" : ""} registered
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchSchools}
+          <button onClick={fetchSchools} disabled={loading}
             className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-white transition px-3 py-2 rounded-xl bg-white/5 hover:bg-white/8">
             <FiRefreshCw size={13} className={loading ? "animate-spin" : ""} /> Refresh
           </button>
@@ -376,9 +437,9 @@ const Schools = () => {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Total Schools",    value: schools.length,                              color: "#FF8C00" },
-          { label: "Active",           value: schools.filter(s => s.is_active !== false).length, color: "#10B981" },
-          { label: "Inactive",         value: schools.filter(s => s.is_active === false).length, color: "#EF4444" },
+          { label: "Total Schools", value: safeSchools.length, color: "#FF8C00" },
+          { label: "Active", value: activeCount, color: "#10B981" },
+          { label: "Inactive", value: inactiveCount, color: "#EF4444" },
         ].map(({ label, value, color }) => (
           <div key={label} className="rounded-2xl p-4 border border-white/5"
             style={{ background: "#0d0d14" }}>

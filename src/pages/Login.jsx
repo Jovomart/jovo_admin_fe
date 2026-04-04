@@ -74,10 +74,10 @@ const Login = () => {
           </p>
           <div className="space-y-3 text-left">
             {[
-              { icon: "🏪", text: "Approve & manage seller applications" },
-              { icon: "🚚", text: "Configure delivery options & pricing" },
-              { icon: "📊", text: "Monitor platform performance" },
-              { icon: "🔐", text: "Secure role-based access control" },
+              { icon: "⚙️", text: "Approve & manage seller applications" },
+              { icon: "⚙️", text: "Configure delivery options & pricing" },
+              { icon: "⚙️", text: "Monitor platform performance" },
+              { icon: "⚙️", text: "Secure role-based access control" },
             ].map(({ icon, text }) => (
               <div key={text} className="flex items-center gap-3 px-4 py-3 rounded-2xl"
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>

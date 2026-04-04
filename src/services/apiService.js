@@ -162,6 +162,43 @@ class ApiService {
     );
   }
 
+  // ── ADMIN PROFILE ──────────────────────────────────────────────────────────────
+
+  // GET /admin/auth/profile - Get current admin profile
+  async getAdminProfile() {
+    return this.makeRequest("/admin/auth/profile", { method: "GET" });
+  }
+
+  // PUT /admin/auth/profile - Update admin profile
+  async updateAdminProfile(profileData) {
+    return this.makeRequest("/admin/auth/profile", {
+      method: "PUT",
+      body: JSON.stringify(profileData),
+    });
+  }
+
+  // ── ACTIVITY LOGS ──────────────────────────────────────────────────────────────
+
+  // GET /admin/activity-logs - Get admin activity logs
+  async getActivityLogs({
+    page = 1,
+    pageSize = 20,
+    action = null,
+    adminId = null,
+    days = 7,
+  } = {}) {
+    const params = new URLSearchParams();
+    params.append("page", page);
+    params.append("page_size", pageSize);
+    params.append("days", days);
+    if (action) params.append("action", action);
+    if (adminId) params.append("admin_id", adminId);
+
+    return this.makeRequest(`/admin/activity-logs?${params.toString()}`, {
+      method: "GET",
+    });
+  }
+
   // ── SELLERS ───────────────────────────────────────────────────────────────
 
   // GET /admin/seller/pending

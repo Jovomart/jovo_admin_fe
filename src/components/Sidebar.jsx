@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import logo from "../assets/images/logo.png";
 import {
-  FiGrid, FiUsers, FiShoppingBag, FiTruck,
+  FiGrid, FiUsers, FiShoppingBag, FiTruck, FiActivity,
   FiLogOut, FiChevronRight, FiX, FiSettings, FiUserPlus,
 } from "react-icons/fi";
 import { MdStorefront, MdOutlineSchool } from "react-icons/md";
@@ -29,6 +29,7 @@ const isSuperAdmin = admin?.email === "voltsourceinnovations@gmail.com"; // Repl
   // Super Admin only nav items
   const superAdminItems = [
     { label: "Admin Invitations", icon: <FiUserPlus size={18} />, to: "/admin-invitations" },
+    { label: "Activity Logs", icon: <FiActivity size={18} />, to: "/activity-logs" },
   ];
 
   const navItems = isSuperAdmin ? [...baseNavItems, ...superAdminItems] : baseNavItems;
