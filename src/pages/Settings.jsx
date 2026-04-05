@@ -73,11 +73,11 @@ const ProfileEditModal = ({ profile, onClose, onSave, loading }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)" }}>
-      <div className="w-full max-w-lg rounded-3xl border overflow-hidden"
+      <div className="w-full max-w-lg rounded-3xl border overflow-hidden mx-4"
         style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.08)", maxHeight: "90vh", overflowY: "auto" }}>
         
-        <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-          <h3 className="text-lg font-black text-white" style={{ fontFamily: "'Playfair Display',serif" }}>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <h3 className="text-base sm:text-lg font-black text-white" style={{ fontFamily: "'Playfair Display',serif" }}>
             Edit Profile
           </h3>
           <button onClick={onClose} className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white">
@@ -85,7 +85,7 @@ const ProfileEditModal = ({ profile, onClose, onSave, loading }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
           {errors.general && (
             <div className="flex items-center gap-2 rounded-xl px-4 py-3" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
               <FiAlertCircle size={14} className="text-red-400" />
@@ -93,7 +93,7 @@ const ProfileEditModal = ({ profile, onClose, onSave, loading }) => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">First Name *</label>
               <input type="text" value={form.first_name} onChange={(e) => handleChange("first_name", e.target.value)}
@@ -137,7 +137,7 @@ const ProfileEditModal = ({ profile, onClose, onSave, loading }) => {
               className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">State</label>
               <input type="text" value={form.state} onChange={(e) => handleChange("state", e.target.value)}
@@ -156,13 +156,13 @@ const ProfileEditModal = ({ profile, onClose, onSave, loading }) => {
               className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all resize-none" />
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <button type="button" onClick={onClose}
-              className="flex-1 py-3 rounded-xl text-sm font-bold text-white/40 bg-white/5 hover:bg-white/10 transition">
+              className="order-2 sm:order-1 flex-1 py-3 rounded-xl text-sm font-bold text-white/40 bg-white/5 hover:bg-white/10 transition">
               Cancel
             </button>
             <button type="submit" disabled={saveLoading}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black text-white transition-all hover:opacity-90 disabled:opacity-50"
+              className="order-1 sm:order-2 flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black text-white transition-all hover:opacity-90 disabled:opacity-50"
               style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}>
               {saveLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FiSave size={14} />}
               {saveLoading ? "Saving..." : "Save Changes"}
@@ -339,11 +339,11 @@ const Settings = () => {
   const currentProfile = profile || admin;
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl mx-auto px-4 sm:px-6">
       {/* Toast */}
       {toast && (
         <div
-          className="fixed top-6 right-6 z-100 flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold animate-pulse"
+          className="fixed top-6 right-4 sm:right-6 z-100 flex items-center gap-2 px-3 sm:px-4 py-3 rounded-2xl text-sm font-bold animate-pulse"
           style={{
             background:
               toast.type === "error"
@@ -359,7 +359,7 @@ const Settings = () => {
           ) : (
             <FiCheck size={15} />
           )}
-          {toast.msg}
+          <span className="text-xs sm:text-sm">{toast.msg}</span>
         </div>
       )}
 
@@ -375,19 +375,19 @@ const Settings = () => {
 
       <div>
         <h1
-          className="text-2xl font-black text-white"
+          className="text-xl sm:text-2xl font-black text-white"
           style={{ fontFamily: "'Playfair Display',serif" }}
         >
           Settings
         </h1>
-        <p className="text-sm text-white/30 mt-0.5">
+        <p className="text-xs sm:text-sm text-white/30 mt-0.5">
           Manage your admin account and security settings
         </p>
       </div>
 
       {/* Profile banner with Edit button */}
       <div
-        className="rounded-3xl p-5 flex items-center gap-5 relative overflow-hidden"
+        className="rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 relative overflow-hidden"
         style={{
           background: "linear-gradient(135deg,#0f0a00,#1a0f00,#2a1500)",
           border: "1px solid rgba(255,140,0,0.1)",
@@ -397,37 +397,39 @@ const Settings = () => {
           className="absolute -right-10 -top-10 w-40 h-40 rounded-full pointer-events-none opacity-10"
           style={{ background: "radial-gradient(circle,#FF8C00,transparent)" }}
         />
-        <div
-          className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-black shrink-0 relative z-10"
-          style={{
-            background: "linear-gradient(135deg,#B42225,#FF8C00)",
-            boxShadow: "0 6px 20px rgba(180,34,37,0.4)",
-          }}
-        >
-          {initials}
-        </div>
-        <div className="relative z-10 flex-1">
-          <p
-            className="text-base font-black text-white"
-            style={{ fontFamily: "'Playfair Display',serif" }}
-          >
-            {displayName}
-          </p>
-          <p className="text-xs text-white/40">{currentProfile?.email || admin?.email}</p>
-          <span
-            className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full mt-1 inline-block"
+        <div className="flex items-center gap-4 sm:gap-5 relative z-10 flex-1">
+          <div
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-white text-base sm:text-lg font-black shrink-0"
             style={{
-              background: "rgba(255,140,0,0.15)",
-              border: "1px solid rgba(255,140,0,0.25)",
-              color: "#FF8C00",
+              background: "linear-gradient(135deg,#B42225,#FF8C00)",
+              boxShadow: "0 6px 20px rgba(180,34,37,0.4)",
             }}
           >
-            🔐 {roleLabel}
-          </span>
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-base sm:text-lg font-black text-white truncate"
+              style={{ fontFamily: "'Playfair Display',serif" }}
+            >
+              {displayName}
+            </p>
+            <p className="text-xs text-white/40 truncate">{currentProfile?.email || admin?.email}</p>
+            <span
+              className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full mt-1 inline-block"
+              style={{
+                background: "rgba(255,140,0,0.15)",
+                border: "1px solid rgba(255,140,0,0.25)",
+                color: "#FF8C00",
+              }}
+            >
+              🔐 {roleLabel}
+            </span>
+          </div>
         </div>
         <button
           onClick={() => setShowEditModal(true)}
-          className="relative z-10 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90"
+          className="relative z-10 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 w-full sm:w-auto"
           style={{ background: "rgba(255,140,0,0.15)", border: "1px solid rgba(255,140,0,0.25)", color: "#FF8C00" }}
         >
           <FiEdit2 size={12} /> Edit Profile
@@ -461,7 +463,7 @@ const Settings = () => {
                 : {}
             }
           >
-            {icon} {label}
+            {icon} <span className="hidden sm:inline">{label}</span>
           </button>
         ))}
       </div>
@@ -469,13 +471,13 @@ const Settings = () => {
       {/* ── PROFILE TAB ── */}
       {activeTab === "profile" && (
         <div
-          className="rounded-3xl p-6 space-y-1"
+          className="rounded-3xl p-4 sm:p-6 space-y-1"
           style={{
             background: "#0d0d14",
             border: "1px solid rgba(255,255,255,0.06)",
           }}
         >
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <h3
               className="text-base font-black text-white"
               style={{ fontFamily: "'Playfair Display',serif" }}
@@ -511,13 +513,13 @@ const Settings = () => {
               ].map(({ label, value }) => (
                 <div
                   key={label}
-                  className="flex items-center justify-between py-3 border-b"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b gap-1 sm:gap-0"
                   style={{ borderColor: "rgba(255,255,255,0.05)" }}
                 >
                   <span className="text-xs text-white/30 font-semibold">
                     {label}
                   </span>
-                  <span className="text-sm font-bold text-white/70">{value}</span>
+                  <span className="text-sm font-bold text-white/70 wrap-break-word">{value}</span>
                 </div>
               ))}
             </>
@@ -541,10 +543,10 @@ const Settings = () => {
         </div>
       )}
 
-      {/* ── SECURITY TAB (unchanged) ── */}
+      {/* ── SECURITY TAB ── */}
       {activeTab === "security" && (
         <div
-          className="rounded-3xl p-6 space-y-5"
+          className="rounded-3xl p-4 sm:p-6 space-y-5"
           style={{
             background: "#0d0d14",
             border: "1px solid rgba(255,255,255,0.06)",
@@ -576,7 +578,7 @@ const Settings = () => {
           )}
 
           {/* Step indicator */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
             {[1, 2, 3].map((s) => (
               <div key={s} className="flex items-center gap-2">
                 <div
@@ -592,11 +594,11 @@ const Settings = () => {
                   {pwStep > s ? <Check size={10} /> : s}
                 </div>
                 <span
-                  className={`text-[10px] font-bold ${pwStep === s ? "text-white/60" : "text-white/20"}`}
+                  className={`text-[10px] font-bold hidden sm:inline ${pwStep === s ? "text-white/60" : "text-white/20"}`}
                 >
                   {s === 1 ? "Send Code" : s === 2 ? "Verify" : "New Password"}
                 </span>
-                {s < 3 && <div className="w-8 h-px bg-white/10" />}
+                {s < 3 && <div className="w-6 sm:w-8 h-px bg-white/10" />}
               </div>
             ))}
           </div>
@@ -606,7 +608,7 @@ const Settings = () => {
             <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-2">
               Email Address
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <div className={`flex-1 ${inputCls(pwErrors.email)}`}>
                 <FiMail size={14} className="text-white/25 shrink-0" />
                 <input
@@ -622,7 +624,7 @@ const Settings = () => {
               <button
                 onClick={handleSendCode}
                 disabled={pwLoading}
-                className="px-4 rounded-2xl text-xs font-black text-white transition-all hover:opacity-90 disabled:opacity-50 shrink-0"
+                className="px-4 py-3 rounded-2xl text-xs font-black text-white transition-all hover:opacity-90 disabled:opacity-50 shrink-0"
                 style={{
                   background: "linear-gradient(135deg,#B42225,#FF8C00)",
                 }}
@@ -767,7 +769,7 @@ const Settings = () => {
 
       {/* Danger zone */}
       <div
-        className="rounded-3xl p-6"
+        className="rounded-3xl p-4 sm:p-6"
         style={{
           background: "#0d0d14",
           border: "1px solid rgba(239,68,68,0.1)",
@@ -779,7 +781,7 @@ const Settings = () => {
         </p>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-black text-red-400 hover:bg-red-500 hover:text-white transition-all duration-200"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-sm font-black text-red-400 hover:bg-red-500 hover:text-white transition-all duration-200"
           style={{
             background: "rgba(239,68,68,0.08)",
             border: "1px solid rgba(239,68,68,0.15)",
