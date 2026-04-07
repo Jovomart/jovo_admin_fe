@@ -11,12 +11,49 @@ import {
 } from "react-icons/fi";
 import { MdStorefront, MdOutlineSchool } from "react-icons/md";
 
-const normalizeList = (result) => {
+const normalizeList = (result, type = "sellers") => {
   if (!result) return [];
+  
+  // Direct array
   if (Array.isArray(result)) return result;
-  if (Array.isArray(result?.data)) return result.data;
-  if (Array.isArray(result?.items)) return result.items;
-  if (result?.data?.delivery_options && Array.isArray(result.data.delivery_options)) return result.data.delivery_options;
+  
+  // Unwrap data property
+  const data = result?.data ?? result;
+  
+  // If data is an array
+  if (Array.isArray(data)) return data;
+  
+  // For delivery options - check the nested structure
+  if (type === "delivery") {
+    if (data?.all_options?.options && Array.isArray(data.all_options.options)) {
+      return data.all_options.options;
+    }
+    if (data?.active_options?.options && Array.isArray(data.active_options.options)) {
+      return data.active_options.options;
+    }
+    if (data?.inactive_options?.options && Array.isArray(data.inactive_options.options)) {
+      return data.inactive_options.options;
+    }
+  }
+  
+  // For sellers - check common wrappers
+  if (data?.sellers && Array.isArray(data.sellers)) return data.sellers;
+  if (data?.applications && Array.isArray(data.applications)) return data.applications;
+  if (data?.items && Array.isArray(data.items)) return data.items;
+  if (data?.results && Array.isArray(data.results)) return data.results;
+  if (data?.delivery_options && Array.isArray(data.delivery_options)) return data.delivery_options;
+  
+  // For pending/approved sellers - check root level
+  if (result?.pending && Array.isArray(result.pending)) return result.pending;
+  if (result?.approved && Array.isArray(result.approved)) return result.approved;
+  if (result?.sellers && Array.isArray(result.sellers)) return result.sellers;
+  
+  // If data has numeric keys (array-like object)
+  const values = Object.values(data);
+  if (values.length > 0 && Array.isArray(values[0])) {
+    return values[0];
+  }
+  
   return [];
 };
 
@@ -152,15 +189,19 @@ const Dashboard = () => {
         const [pendingSellers, approvedSellers, deliveryOptions] = await Promise.all([
           AdminApiService.getPendingSellers(),
           AdminApiService.getApprovedSellers(),
-          AdminApiService.getDeliveryOptions(),
+          AdminApiService.getAllDeliveryOptions(),
         ]);
         
-        let deliveryOptionsArray = normalizeList(deliveryOptions);
+        const pendingList = normalizeList(pendingSellers);
+        const approvedList = normalizeList(approvedSellers);
+        // Pass "delivery" as the type to properly parse delivery options
+        let deliveryOptionsArray = normalizeList(deliveryOptions, "delivery");
+        
         const activeCount = deliveryOptionsArray.filter(opt => opt.is_available === true).length;
         
         setCounts({
-          pending: normalizeList(pendingSellers).length,
-          approved: normalizeList(approvedSellers).length,
+          pending: pendingList.length,
+          approved: approvedList.length,
           deliveryOptions: deliveryOptionsArray.length,
           activeDeliveryOptions: activeCount,
         });
