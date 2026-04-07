@@ -9,42 +9,60 @@ import {
 import { MdOutlineSchool } from "react-icons/md";
 
 /* ─── Helper function to safely extract schools array ───────── */
-const extractSchoolsArray = (data) => {
+const extractSchoolsArray = (response) => {
+  console.log("extractSchoolsArray received:", response);
+  
+  if (!response) return [];
+  
+  // Direct array
+  if (Array.isArray(response)) return response;
+  
+  // Unwrap data property
+  const data = response?.data ?? response;
+  
   // If data is an array
   if (Array.isArray(data)) return data;
   
-  // If data has a data property that's an array
-  if (data?.data && Array.isArray(data.data)) return data.data;
+  // NEW: Check for all_schools.schools (your backend structure)
+  if (data?.all_schools?.schools && Array.isArray(data.all_schools.schools)) {
+    console.log("Found schools in data.all_schools.schools");
+    return data.all_schools.schools;
+  }
+  
+  // Check for active_schools.schools
+  if (data?.active_schools?.schools && Array.isArray(data.active_schools.schools)) {
+    console.log("Found schools in data.active_schools.schools");
+    return data.active_schools.schools;
+  }
+  
+  // Check for inactive_schools.schools
+  if (data?.inactive_schools?.schools && Array.isArray(data.inactive_schools.schools)) {
+    console.log("Found schools in data.inactive_schools.schools");
+    return data.inactive_schools.schools;
+  }
   
   // If data has a schools property that's an array
-  if (data?.schools && Array.isArray(data.schools)) return data.schools;
-  
-  // If data.data is an object with schools array
-  if (data?.data?.schools && Array.isArray(data.data.schools)) return data.data.schools;
-  
-  // If data.data is an empty object, return empty array
-  if (data?.data && typeof data.data === 'object' && Object.keys(data.data).length === 0) {
-    return [];
+  if (data?.schools && Array.isArray(data.schools)) {
+    console.log("Found schools in data.schools");
+    return data.schools;
   }
   
-  // If data.data is an object, try to extract any array property
-  if (data?.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
-    for (const key in data.data) {
-      if (Array.isArray(data.data[key])) {
-        return data.data[key];
-      }
-    }
+  // If response has a schools property directly
+  if (response?.schools && Array.isArray(response.schools)) {
+    console.log("Found schools in response.schools");
+    return response.schools;
   }
   
-  // If data itself is an object with numeric keys (array-like)
-  if (typeof data === 'object' && !Array.isArray(data) && data !== null) {
+  // If data is an object with numeric keys (array-like)
+  if (typeof data === 'object' && data !== null) {
     const values = Object.values(data);
     if (values.length > 0 && Array.isArray(values[0])) {
+      console.log("Found array in object values");
       return values[0];
     }
   }
   
-  // Default: return empty array
+  console.log("No schools found, returning empty array");
   return [];
 };
 
@@ -186,6 +204,47 @@ const SchoolModal = ({ existing, onClose, onDone }) => {
   );
 };
 
+/* ─── Deactivate/Reactivate Confirm Modal ────────────────────── */
+const ToggleStatusModal = ({ school, action, onConfirm, onCancel, loading }) => {
+  const isDeactivate = action === "deactivate";
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}>
+      <div className="w-full max-w-sm rounded-3xl p-6"
+        style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className={`w-12 h-12 rounded-2xl ${isDeactivate ? "bg-amber-500/10" : "bg-emerald-500/10"} flex items-center justify-center mx-auto mb-4`}>
+          {isDeactivate ? <FiToggleLeft size={20} className="text-amber-400" /> : <FiToggleRight size={20} className="text-emerald-400" />}
+        </div>
+        <h3 className="text-lg font-black text-white text-center mb-2" style={{ fontFamily: "'Playfair Display',serif" }}>
+          {isDeactivate ? "Deactivate School?" : "Reactivate School?"}
+        </h3>
+        <p className="text-sm text-white/40 text-center mb-2">
+          {isDeactivate 
+            ? `You are about to deactivate "${school.school_name}".`
+            : `You are about to reactivate "${school.school_name}".`}
+        </p>
+        <p className="text-xs text-white/25 text-center mb-5">
+          {isDeactivate 
+            ? "The school will be hidden from active listings but can be reactivated later."
+            : "The school will become visible to users again."}
+        </p>
+        <div className="flex gap-3">
+          <button onClick={onCancel}
+            className="flex-1 py-3 rounded-xl text-sm font-bold text-white/40 bg-white/5 hover:bg-white/8 transition">
+            Cancel
+          </button>
+          <button onClick={onConfirm} disabled={loading}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black text-white transition disabled:opacity-50 ${
+              isDeactivate ? "bg-amber-500 hover:bg-amber-600" : "bg-emerald-500 hover:bg-emerald-600"
+            }`}>
+            {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Confirm"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ─── Delete Confirm Modal ────────────────────────────────────── */
 const DeleteModal = ({ school, onClose, onDone }) => {
   const [loading, setLoading] = useState(false);
@@ -233,93 +292,118 @@ const DeleteModal = ({ school, onClose, onDone }) => {
 
 /* ─── School Card ─────────────────────────────────────────────── */
 const SchoolCard = ({ school, onEdit, onDelete, onToggleStatus }) => {
+  const [showToggleModal, setShowToggleModal] = useState(false);
+  const [toggleAction, setToggleAction] = useState(null);
   const [toggling, setToggling] = useState(false);
   const isActive = school.is_active !== false;
 
-  const handleToggle = async () => {
+  const handleToggleClick = (action) => {
+    setToggleAction(action);
+    setShowToggleModal(true);
+  };
+
+  const handleToggleConfirm = async () => {
     setToggling(true);
-    try { await onToggleStatus(school); }
-    catch (err) { console.error("Toggle error:", err); }
-    finally { setToggling(false); }
+    setShowToggleModal(false);
+    try { 
+      await onToggleStatus(school, toggleAction); 
+    } catch (err) { 
+      console.error("Toggle error:", err); 
+    }
+    finally { 
+      setToggling(false); 
+      setToggleAction(null);
+    }
   };
 
   return (
-    <div className="rounded-2xl p-5 border border-white/5 hover:border-white/10 transition-all duration-200"
-      style={{ background: "#0d0d14", boxShadow: "0 2px 12px rgba(0,0,0,0.2)" }}>
+    <>
+      {showToggleModal && (
+        <ToggleStatusModal
+          school={school}
+          action={toggleAction}
+          onConfirm={handleToggleConfirm}
+          onCancel={() => setShowToggleModal(false)}
+          loading={toggling}
+        />
+      )}
+      <div className="rounded-2xl p-5 border border-white/5 hover:border-white/10 transition-all duration-200"
+        style={{ background: "#0d0d14", boxShadow: "0 2px 12px rgba(0,0,0,0.2)" }}>
 
-      <div className="flex items-start gap-3 mb-4">
-        <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
-          style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}>
-          {school.school_logo_url
-            ? <img src={school.school_logo_url} alt={school.school_name} className="w-full h-full object-cover" />
-            : <span className="text-white text-sm font-black">
-                {school.school_code?.slice(0, 2) || school.school_name?.slice(0, 2) || "SC"}
-              </span>}
-        </div>
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}>
+            {school.school_logo_url
+              ? <img src={school.school_logo_url} alt={school.school_name} className="w-full h-full object-cover" />
+              : <span className="text-white text-sm font-black">
+                  {school.school_code?.slice(0, 2) || school.school_name?.slice(0, 2) || "SC"}
+                </span>}
+          </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h3 className="text-sm font-black text-white/90 leading-tight">{school.school_name}</h3>
-              <span className="text-[10px] font-black text-[#FF8C00] bg-[#FF8C00]/10 px-2 py-0.5 rounded-full mt-1 inline-block">
-                {school.school_code}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-black text-white/90 leading-tight">{school.school_name}</h3>
+                <span className="text-[10px] font-black text-[#FF8C00] bg-[#FF8C00]/10 px-2 py-0.5 rounded-full mt-1 inline-block">
+                  {school.school_code}
+                </span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ${
+                isActive ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"
+              }`}>
+                {isActive ? "● Active" : "● Inactive"}
               </span>
             </div>
-            <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ${
-              isActive ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"
-            }`}>
-              {isActive ? "● Active" : "● Inactive"}
-            </span>
           </div>
         </div>
-      </div>
 
-      <div className="space-y-2 mb-4">
-        {school.school_address && (
-          <p className="flex items-start gap-2 text-xs text-white/35">
-            <FiMapPin size={11} className="text-white/25 shrink-0 mt-0.5" /> {school.school_address}
-          </p>
-        )}
-        {school.school_email && (
-          <p className="flex items-center gap-2 text-xs text-white/35">
-            <FiMail size={11} className="text-white/25 shrink-0" /> {school.school_email}
-          </p>
-        )}
-        {school.school_phone_number && (
-          <p className="flex items-center gap-2 text-xs text-white/35">
-            <FiPhone size={11} className="text-white/25 shrink-0" /> {school.school_phone_number}
-          </p>
-        )}
-        {school.school_website && (
-          <a href={school.school_website} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 text-xs text-[#FF8C00]/60 hover:text-[#FF8C00] transition-colors">
-            <FiGlobe size={11} className="shrink-0" /> {school.school_website}
-          </a>
-        )}
-      </div>
+        <div className="space-y-2 mb-4">
+          {school.school_address && (
+            <p className="flex items-start gap-2 text-xs text-white/35">
+              <FiMapPin size={11} className="text-white/25 shrink-0 mt-0.5" /> {school.school_address}
+            </p>
+          )}
+          {school.school_email && (
+            <p className="flex items-center gap-2 text-xs text-white/35">
+              <FiMail size={11} className="text-white/25 shrink-0" /> {school.school_email}
+            </p>
+          )}
+          {school.school_phone_number && (
+            <p className="flex items-center gap-2 text-xs text-white/35">
+              <FiPhone size={11} className="text-white/25 shrink-0" /> {school.school_phone_number}
+            </p>
+          )}
+          {school.school_website && (
+            <a href={school.school_website} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 text-xs text-[#FF8C00]/60 hover:text-[#FF8C00] transition-colors">
+              <FiGlobe size={11} className="shrink-0" /> {school.school_website}
+            </a>
+          )}
+        </div>
 
-      <div className="flex items-center gap-2 pt-3 border-t border-white/5">
-        <button onClick={() => onEdit(school)}
-          className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-[#FF8C00] transition-colors px-3 py-2 rounded-xl hover:bg-[#FF8C00]/5">
-          <FiEdit2 size={12} /> Edit
-        </button>
-        <button onClick={handleToggle} disabled={toggling}
-          className={`flex items-center gap-1.5 text-xs font-bold transition-colors px-3 py-2 rounded-xl disabled:opacity-50 ${
-            isActive
-              ? "text-white/40 hover:text-amber-400 hover:bg-amber-400/5"
-              : "text-white/40 hover:text-emerald-400 hover:bg-emerald-400/5"
-          }`}>
-          {toggling
-            ? <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
-            : isActive ? <FiToggleLeft size={13} /> : <FiToggleRight size={13} />}
-          {isActive ? "Deactivate" : "Reactivate"}
-        </button>
-        <button onClick={() => onDelete(school)}
-          className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-red-400 transition-colors px-3 py-2 rounded-xl hover:bg-red-500/5 ml-auto">
-          <FiTrash2 size={12} /> Delete
-        </button>
+        <div className="flex items-center gap-2 pt-3 border-t border-white/5">
+          <button onClick={() => onEdit(school)}
+            className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-[#FF8C00] transition-colors px-3 py-2 rounded-xl hover:bg-[#FF8C00]/5">
+            <FiEdit2 size={12} /> Edit
+          </button>
+          {isActive ? (
+            <button onClick={() => handleToggleClick("deactivate")}
+              className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-amber-400 transition-colors px-3 py-2 rounded-xl hover:bg-amber-400/5">
+              <FiToggleLeft size={13} /> Deactivate
+            </button>
+          ) : (
+            <button onClick={() => handleToggleClick("reactivate")}
+              className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-emerald-400 transition-colors px-3 py-2 rounded-xl hover:bg-emerald-400/5">
+              <FiToggleRight size={13} /> Reactivate
+            </button>
+          )}
+          <button onClick={() => onDelete(school)}
+            className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-red-400 transition-colors px-3 py-2 rounded-xl hover:bg-red-500/5 ml-auto">
+            <FiTrash2 size={12} /> Delete
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -354,24 +438,20 @@ const Schools = () => {
 
   useEffect(() => { fetchSchools(); }, []);
 
-  const handleToggleStatus = async (school) => {
-    const isActive = school.is_active !== false;
+  const handleToggleStatus = async (school, action) => {
     const id = school.id || school._id;
     try {
-      if (isActive) {
+      if (action === "deactivate") {
         await ApiService.deactivateSchool(id);
       } else {
         await ApiService.reactivateSchool(id);
       }
-      // Wait a moment before refreshing
-      setTimeout(() => {
-        fetchSchools();
-      }, 500);
+      // Refresh after toggle
+      await fetchSchools();
     } catch (err) {
       console.error("Toggle status error:", err);
       setError(err.message || "Failed to update school status");
-      // Refresh anyway to sync with backend
-      fetchSchools();
+      throw err;
     }
   };
 

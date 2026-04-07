@@ -299,51 +299,107 @@ class ApiService {
     );
   }
 
-  // ── DELIVERY ──────────────────────────────────────────────────────────────
+  // src/services/apiService.js
+  // Add these methods INSIDE the ApiService class, preferably after the schools section or before the logout method
 
-  // GET /admin/delivery/options
-  async getDeliveryOptions() {
-    return this.makeRequest("/admin/delivery/options", { method: "GET" });
-  }
+  // ── DELIVERY OPTIONS ──────────────────────────────────────────────────────────────
 
-  // POST /admin/delivery/create-options
-  async createDeliveryOption(data) {
+  // POST /admin/delivery/create-options - Create delivery option
+  async createDeliveryOption(deliveryData) {
     return this.makeRequest("/admin/delivery/create-options", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        delivery_type: deliveryData.delivery_type,
+        delivery_cost: deliveryData.delivery_cost,
+        delivery_areas: deliveryData.delivery_areas,
+        estimated_days_min: deliveryData.estimated_days_min,
+        estimated_days_max: deliveryData.estimated_days_max,
+        delivery_description: deliveryData.delivery_description,
+        carrier_name: deliveryData.carrier_name,
+        is_free_delivery: deliveryData.is_free_delivery,
+        minimum_order_amount: deliveryData.minimum_order_amount,
+        weight_limit_kg: deliveryData.weight_limit_kg,
+        max_order_value: deliveryData.max_order_value,
+        is_available: deliveryData.is_available,
+        priority: deliveryData.priority,
+      }),
     });
   }
 
-  // GET /admin/delivery/options/{id}
-  async getDeliveryOption(deliveryId) {
+  // GET /admin/delivery/options - Get all delivery options
+  async getAllDeliveryOptions() {
+    return this.makeRequest("/admin/delivery/options", {
+      method: "GET",
+    });
+  }
+
+  // GET /admin/delivery/options/{delivery_id} - Get delivery option by ID
+  async getDeliveryOptionById(deliveryId) {
     return this.makeRequest(`/admin/delivery/options/${deliveryId}`, {
       method: "GET",
     });
   }
 
-  // PUT /admin/delivery/options/{id}
-  async updateDeliveryOption(deliveryId, data) {
+  // PUT /admin/delivery/options/{delivery_id} - Update delivery option
+  async updateDeliveryOption(deliveryId, updateData) {
     return this.makeRequest(`/admin/delivery/options/${deliveryId}`, {
       method: "PUT",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        delivery_cost: updateData.delivery_cost,
+        delivery_areas: updateData.delivery_areas,
+        estimated_days_min: updateData.estimated_days_min,
+        estimated_days_max: updateData.estimated_days_max,
+        delivery_description: updateData.delivery_description,
+        carrier_name: updateData.carrier_name,
+        is_free_delivery: updateData.is_free_delivery,
+        minimum_order_amount: updateData.minimum_order_amount,
+        weight_limit_kg: updateData.weight_limit_kg,
+        max_order_value: updateData.max_order_value,
+        is_available: updateData.is_available,
+        priority: updateData.priority,
+      }),
     });
   }
 
-  // DELETE /admin/delivery/options/{id}
-  async deleteDeliveryOption(deliveryId) {
-    return this.makeRequest(`/admin/delivery/options/${deliveryId}`, {
-      method: "DELETE",
-    });
-  }
-
-  // GET /admin/delivery/options/available?cart_total=&total_weight=
+  // GET /admin/delivery/options/available - Get available options for cart
   async getAvailableDeliveryOptions(cartTotal, totalWeight) {
     return this.makeRequest(
       `/admin/delivery/options/available?cart_total=${cartTotal}&total_weight=${totalWeight}`,
-      { method: "GET" },
+      {
+        method: "GET",
+      },
     );
   }
 
+  // POST /admin/delivery/options/{delivery_id}/deactivate - Deactivate delivery option (soft delete)
+  async deactivateDeliveryOption(deliveryId) {
+    return this.makeRequest(
+      `/admin/delivery/options/${deliveryId}/deactivate`,
+      {
+        method: "POST",
+      },
+    );
+  }
+
+  // POST /admin/delivery/options/{delivery_id}/reactivate - Reactivate delivery option
+  async reactivateDeliveryOption(deliveryId) {
+    return this.makeRequest(
+      `/admin/delivery/options/${deliveryId}/reactivate`,
+      {
+        method: "POST",
+      },
+    );
+  }
+
+  // DELETE /admin/delivery/options/{delivery_id}/permanently-delete - Permanently delete delivery option
+  async permanentlyDeleteDeliveryOption(deliveryId) {
+    return this.makeRequest(
+      `/admin/delivery/options/${deliveryId}/permanently-delete`,
+      {
+        method: "DELETE",
+      },
+    );
+  }
   // ── SCHOOLS ───────────────────────────────────────────────────────────────
 
   // POST /admin/school/create-school
