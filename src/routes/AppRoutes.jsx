@@ -13,6 +13,7 @@ import Settings from "../pages/Settings";
 import AdminInvitations from "../pages/AdminInvitations"; 
 import AcceptInvitation from "../pages/AcceptInvitation"; 
 import ActivityLogs from "../pages/ActivityLogs";
+import Categories from "../pages/Categories";
 
 const AppRoutes = () => (
   <Routes>
@@ -40,7 +41,7 @@ const AppRoutes = () => (
       <Route path="/settings" element={<Settings />} />
       <Route path="/admin-invitations" element={<AdminInvitations />} />{" "}
       <Route path="/activity-logs" element={<ActivityLogs />} />
-      {/* Add this */}
+      <Route path="/categories" element={<Categories />} />
     </Route>
 
     <Route path="*" element={<Navigate to="/dashboard" replace />} />

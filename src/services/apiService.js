@@ -400,6 +400,82 @@ class ApiService {
       },
     );
   }
+
+  // ── CATEGORY MANAGEMENT ──────────────────────────────────────────────────────────
+
+  // 1. POST /admin/category/create-category - Create new category
+  async createCategory(data) {
+    const payload = {
+      name: data.name,
+      slug: data.slug || undefined,
+      description: data.description || "",
+      category_type: data.category_type, // "PRODUCT" or "SERVICE"
+      attribute_schema: data.attribute_schema || [],
+    };
+    return this.makeRequest("/admin/category/create-category", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // 2. GET /admin/category/get-all-categories - Get all categories
+  async getAdminCategories(categoryType = null, includeInactive = false) {
+    const params = new URLSearchParams();
+    if (categoryType) params.append("category_type", categoryType);
+    params.append("include_inactive", includeInactive);
+    return this.makeRequest(
+      `/admin/category/get-all-categories?${params.toString()}`,
+      { method: "GET" },
+    );
+  }
+
+  // 3. GET /admin/category/get-category/{id} - Get single category
+  async getAdminCategory(categoryId) {
+    return this.makeRequest(`/admin/category/get-category/${categoryId}`, {
+      method: "GET",
+    });
+  }
+
+  // 4. PUT /admin/category/update-category/{id} - Update category
+  async updateCategory(categoryId, data) {
+    const payload = {
+      name: data.name,
+      description: data.description || "",
+      attribute_schema: data.attribute_schema || [],
+    };
+    return this.makeRequest(`/admin/category/update-category/${categoryId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // 5. PATCH /admin/category/deactivate-category/{id} - Deactivate category
+  async deactivateCategory(categoryId) {
+    return this.makeRequest(
+      `/admin/category/deactivate-category/${categoryId}`,
+      {
+        method: "PATCH",
+      },
+    );
+  }
+
+  // 6. PATCH /admin/category/reactivate-category/{id} - Reactivate category
+  async reactivateCategory(categoryId) {
+    return this.makeRequest(
+      `/admin/category/reactivate-category/${categoryId}`,
+      {
+        method: "PATCH",
+      },
+    );
+  }
+
+  // 7. DELETE /admin/category/delete-category/{id} - Permanently delete category
+  async deleteCategory(categoryId) {
+    return this.makeRequest(`/admin/category/delete-category/${categoryId}`, {
+      method: "DELETE",
+    });
+  }
+
   // ── SCHOOLS ───────────────────────────────────────────────────────────────
 
   // POST /admin/school/create-school
