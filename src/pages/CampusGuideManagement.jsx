@@ -1034,55 +1034,60 @@ const CampusGuideManagement = () => {
   }, [fetchSchools, fetchLocations]);
 
   const handleSave = async (formData, editId) => {
-    setSaving(true);
-    try {
-      // IMPORTANT: Send facilities as an ARRAY, not an object!
-      const facilitiesArray = formData.facilities || [];
-      
-      const payload = {
-        category: formData.category,
-        name: formData.name,
-        location: formData.location,
-        walk_time: formData.walk_time,
-        opening_hours: formData.opening_hours || "",
-        about: formData.about,
-        facilities: facilitiesArray, // Send as array, not object!
-        directions: formData.directions || "",
-        landmarks: formData.landmarks || "",
-        image_url: formData.image_url || "",
-        pro_tip: formData.pro_tip || "",
-        google_maps_link: formData.google_maps_link || "",
-        is_active: formData.is_active,
-        must_know_location: formData.must_know_location,
-      };
+  setSaving(true);
+  try {
+    // Convert facilities array to array of objects for backend
+    // Backend expects: [{ "facility_name": true }, { "another_facility": true }]
+    const facilitiesArray = formData.facilities || [];
+    const facilitiesAsObjects = facilitiesArray.map(facility => ({
+      [facility.toLowerCase().replace(/\s+/g, "_")]: true
+    }));
+    
+    const payload = {
+      category: formData.category,
+      name: formData.name,
+      location: formData.location,
+      walk_time: formData.walk_time,
+      opening_hours: formData.opening_hours || "",
+      about: formData.about,
+      facilities: facilitiesAsObjects,
+      directions: formData.directions || "",
+      landmarks: formData.landmarks || "",
+      image_url: formData.image_url || "",
+      pro_tip: formData.pro_tip || "",
+      google_maps_link: formData.google_maps_link || "",
+      is_active: formData.is_active,
+      must_know_location: formData.must_know_location,
+    };
 
-      if (!editId) {
-        payload.school_id = formData.school_id;
-      }
-
-      if (editId) {
-        await ApiService.makeRequest(`/admin/campus-guide/${editId}`, {
-          method: "PUT",
-          body: JSON.stringify(payload),
-        });
-        showToast("Location updated successfully!");
-      } else {
-        await ApiService.makeRequest("/admin/campus-guide/create", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        showToast("Location created successfully!");
-      }
-      setModal(null);
-      await fetchLocations();
-    } catch (err) {
-      console.error("handleSave error:", err);
-      showToast(err.message || "Failed to save.", "error");
-    } finally {
-      setSaving(false);
+    // Only include school_id when creating (not when editing)
+    if (!editId) {
+      payload.school_id = formData.school_id;
     }
-  };
 
+    if (editId) {
+      await ApiService.makeRequest(`/admin/campus-guide/${editId}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+      showToast("Location updated successfully!");
+    } else {
+      await ApiService.makeRequest("/admin/campus-guide/create", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      showToast("Location created successfully!");
+    }
+    setModal(null);
+    await fetchLocations();
+  } catch (err) {
+    console.error("handleSave error:", err);
+    showToast(err.message || "Failed to save.", "error");
+  } finally {
+    setSaving(false);
+  }
+    };
+    
   const handleToggle = async (loc) => {
     setActionId(loc.id);
     try {
