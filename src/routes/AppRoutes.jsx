@@ -14,6 +14,7 @@ import AdminInvitations from "../pages/AdminInvitations";
 import AcceptInvitation from "../pages/AcceptInvitation"; 
 import ActivityLogs from "../pages/ActivityLogs";
 import Categories from "../pages/Categories";
+import CampusGuideManagement from "../pages/CampusGuideManagement";
 
 const AppRoutes = () => (
   <Routes>
@@ -42,6 +43,7 @@ const AppRoutes = () => (
       <Route path="/admin-invitations" element={<AdminInvitations />} />{" "}
       <Route path="/activity-logs" element={<ActivityLogs />} />
       <Route path="/categories" element={<Categories />} />
+      <Route path="/campus-guide" element={<CampusGuideManagement />} />
     </Route>
 
     <Route path="*" element={<Navigate to="/dashboard" replace />} />

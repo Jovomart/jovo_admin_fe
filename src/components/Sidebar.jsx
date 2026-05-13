@@ -30,6 +30,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
     { label: "Dashboard", icon: <FiGrid size={18} />, to: "/dashboard" },
     { label: "Sellers", icon: <MdStorefront size={18} />, to: "/sellers" },
     { label: "Schools", icon: <MdOutlineSchool size={18} />, to: "/schools" },
+    { label: "Campus Guide", icon: <FiUsers size={18} />, to: "/campus-guide" },
     { label: "Categories", icon: <FiGrid size={18} />, to: "/categories" },
     { label: "Delivery", icon: <FiTruck size={18} />, to: "/delivery" },
     { label: "Settings", icon: <FiSettings size={18} />, to: "/settings" },

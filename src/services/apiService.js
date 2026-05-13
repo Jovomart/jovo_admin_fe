@@ -568,6 +568,112 @@ class ApiService {
     });
   }
 
+
+// ── CAMPUS GUIDE MANAGEMENT (ADMIN) ──────────────────────────────────────────────
+
+// POST /admin/campus-guide/create - Create campus guide
+async createCampusGuide(data) {
+  return this.makeRequest("/admin/campus-guide/create", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// GET /admin/campus-guide/all - Get all campus guides
+async getAllCampusGuides(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.school_id) qs.append("school_id", params.school_id);
+  if (params.category) qs.append("category", params.category);
+  if (params.is_active !== undefined) qs.append("is_active", params.is_active);
+  if (params.search) qs.append("search", params.search);
+  if (params.page) qs.append("page", params.page);
+  if (params.limit) qs.append("limit", params.limit);
+  const query = qs.toString();
+  return this.makeRequest(`/admin/campus-guide/all${query ? `?${query}` : ""}`, {
+    method: "GET",
+  });
+}
+
+// GET /admin/campus-guide/{guide_id} - Get campus guide by ID
+async getCampusGuideById(guideId) {
+  return this.makeRequest(`/admin/campus-guide/${guideId}`, {
+    method: "GET",
+  });
+}
+
+// PUT /admin/campus-guide/{guide_id} - Update campus guide
+async updateCampusGuide(guideId, data) {
+  return this.makeRequest(`/admin/campus-guide/${guideId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// DELETE /admin/campus-guide/{guide_id} - Delete campus guide
+async deleteCampusGuide(guideId) {
+  return this.makeRequest(`/admin/campus-guide/${guideId}`, {
+    method: "DELETE",
+  });
+}
+
+// PATCH /admin/campus-guide/{guide_id}/toggle-status - Toggle active status
+async toggleCampusGuideStatus(guideId) {
+  return this.makeRequest(`/admin/campus-guide/${guideId}/toggle-status`, {
+    method: "PATCH",
+  });
+}
+
+// PATCH /admin/campus-guide/{guide_id}/toggle-must-know - Toggle must-know status
+async toggleCampusGuideMustKnow(guideId) {
+  return this.makeRequest(`/admin/campus-guide/${guideId}/toggle-must-know`, {
+    method: "PATCH",
+  });
+}
+
+// GET /admin/campus-guide/reviews/all - Get all reviews
+async getAllCampusReviews(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.campus_guide_id) qs.append("campus_guide_id", params.campus_guide_id);
+  if (params.user_id) qs.append("user_id", params.user_id);
+  if (params.is_verified !== undefined) qs.append("is_verified", params.is_verified);
+  if (params.rating) qs.append("rating", params.rating);
+  if (params.page) qs.append("page", params.page);
+  if (params.limit) qs.append("limit", params.limit);
+  const query = qs.toString();
+  return this.makeRequest(`/admin/campus-guide/reviews/all${query ? `?${query}` : ""}`, {
+    method: "GET",
+  });
+}
+
+// PUT /admin/campus-guide/reviews/{review_id} - Update review
+async updateCampusReview(reviewId, data) {
+  return this.makeRequest(`/admin/campus-guide/reviews/${reviewId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// DELETE /admin/campus-guide/reviews/{review_id} - Delete review
+async deleteCampusReview(reviewId) {
+  return this.makeRequest(`/admin/campus-guide/reviews/${reviewId}`, {
+    method: "DELETE",
+  });
+}
+
+// PATCH /admin/campus-guide/reviews/{review_id}/verify - Verify review
+async verifyCampusReview(reviewId) {
+  return this.makeRequest(`/admin/campus-guide/reviews/${reviewId}/verify`, {
+    method: "PATCH",
+  });
+}
+
+// GET /admin/campus-guide/reviews/statistics - Get review statistics
+async getCampusReviewStatistics() {
+  return this.makeRequest("/admin/campus-guide/reviews/statistics", {
+    method: "GET",
+  });
+}
+
   async logout() {
     this.clearTokens();
   }
