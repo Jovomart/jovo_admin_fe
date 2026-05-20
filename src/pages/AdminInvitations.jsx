@@ -1,17 +1,19 @@
 // src/pages/AdminInvitations.jsx
 import { useState, useEffect, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import ApiService from "../services/apiService";
 import { AuthContext } from "../context/AuthContext";
 import {
   FiPlus, FiX, FiCheck, FiAlertCircle, FiRefreshCw,
   FiMail, FiSend, FiTrash2, FiUserPlus, FiCalendar, FiClock,
+  FiLock,
 } from "react-icons/fi";
 import { MdOutlineMailOutline } from "react-icons/md";
 
 const InviteModal = ({ onClose, onSuccess }) => {
   const [form, setForm] = useState({
     email: "",
-    adminType: "SUPER_ADMIN",
+    adminType: "ADMIN",
     schoolId: "",
   });
   const [schools, setSchools] = useState([]);
@@ -187,7 +189,7 @@ const InvitationCard = ({ invitation, onResend, onRevoke }) => {
               <FiUserPlus size={16} className="text-[#FF8C00]" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-white truncate max-w-45ax-w-[200px] md:max-w-45 lg:max-w-55">
+              <p className="text-sm font-semibold text-white truncate max-w-50">
                 {invitation.email}
               </p>
               <p className="text-xs text-white/40 mt-0.5">
@@ -233,11 +235,29 @@ const InvitationCard = ({ invitation, onResend, onRevoke }) => {
   );
 };
 
+// ── Helper: parse a permissions / access-denied error ────────────────────────
+// The backend may return 401 for "not super admin" instead of 403.
+// We detect that by the message content so we can show a friendlier UI.
+const isPermissionError = (msg = "") => {
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes("permission") ||
+    lower.includes("access") ||
+    lower.includes("privilege") ||
+    lower.includes("not authorized") ||
+    lower.includes("forbidden") ||
+    lower.includes("super admin") ||
+    lower.includes("superadmin")
+  );
+};
+
 const AdminInvitations = () => {
-  const { admin } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const { admin, isSuperAdmin } = useContext(AuthContext);
   const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [errorIsPermission, setErrorIsPermission] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -249,6 +269,7 @@ const AdminInvitations = () => {
   const fetchInvitations = async () => {
     setLoading(true);
     setError("");
+    setErrorIsPermission(false);
     try {
       const response = await ApiService.getInvitations();
       let invitationsArray = [];
@@ -263,8 +284,11 @@ const AdminInvitations = () => {
       }
       setInvitations(invitationsArray);
     } catch (err) {
-      console.error("Fetch error:", err);
-      setError(err.message || "Failed to load invitations");
+      console.error("Fetch invitations error:", err);
+      const msg = err.message || "Failed to load invitations.";
+      setError(msg);
+      // Detect whether this looks like a permissions problem vs a true auth failure
+      setErrorIsPermission(isPermissionError(msg));
     } finally {
       setLoading(false);
     }
@@ -272,11 +296,6 @@ const AdminInvitations = () => {
 
   useEffect(() => {
     fetchInvitations();
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(() => {
-      fetchInvitations();
-    }, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleResend = async (invitation) => {
@@ -300,10 +319,13 @@ const AdminInvitations = () => {
     }
   };
 
-  // Super Admin check - hardcoded with your email
-  const isSuperAdmin = admin?.email === "voltsourceinnovations@gmail.com";
+  // Check if user is super admin using both role and email
+  const userIsSuperAdmin =
+    isSuperAdmin ||
+    admin?.email === "voltsourceinnovations@gmail.com" ||
+    admin?.role === "SUPER_ADMIN";
 
-  if (!isSuperAdmin) {
+  if (!userIsSuperAdmin) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
@@ -329,7 +351,7 @@ const AdminInvitations = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6">
       {/* Toast */}
       {toast && (
-        <div className="fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium shadow-lg"
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium shadow-lg animate-in slide-in-from-top-2"
           style={{ background: "#0d0d14", border: `1px solid ${toast.type === "error" ? "rgba(239,68,68,0.3)" : "rgba(16,185,129,0.3)"}`, color: toast.type === "error" ? "#EF4444" : "#10B981" }}>
           {toast.type === "error" ? <FiAlertCircle size={14} /> : <FiCheck size={14} />}
           {toast.msg}
@@ -350,7 +372,7 @@ const AdminInvitations = () => {
           <p className="text-sm text-white/40 mt-1">Invite and manage administrator accounts</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetchInvitations} disabled={loading}
+          <button onClick={() => fetchInvitations()} disabled={loading}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white/60 hover:text-white transition-all"
             style={{ background: "rgba(255,255,255,0.05)" }}>
             <FiRefreshCw size={14} className={loading ? "animate-spin" : ""} />
@@ -387,8 +409,25 @@ const AdminInvitations = () => {
 
       {/* Error */}
       {error && (
-        <div className="rounded-xl p-4 mb-6" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
-          <p className="text-red-400 text-sm">{error}</p>
+        <div className="rounded-xl p-5 mb-6 flex items-start gap-3"
+          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+          {/* Show a lock icon for permission errors so it's obviously not a crash */}
+          {errorIsPermission
+            ? <FiLock size={18} className="text-red-400 shrink-0 mt-0.5" />
+            : <FiAlertCircle size={18} className="text-red-400 shrink-0 mt-0.5" />
+          }
+          <div className="min-w-0">
+            <p className="text-red-400 text-sm font-medium">
+              {errorIsPermission ? "Permission denied" : "Could not load invitations"}
+            </p>
+            <p className="text-red-400/70 text-xs mt-1 leading-relaxed">{error}</p>
+            {errorIsPermission && (
+              <p className="text-white/30 text-xs mt-2">
+                The backend rejected this request. Make sure your account has Super Admin privileges
+                on the server, then try refreshing.
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -399,7 +438,7 @@ const AdminInvitations = () => {
             <div key={i} className="bg-[#0d0d14] rounded-xl border border-white/5 h-36 animate-pulse" />
           ))}
         </div>
-      ) : invitationsList.length === 0 ? (
+      ) : invitationsList.length === 0 && !error ? (
         <div className="bg-[#0d0d14] rounded-xl border border-white/5 p-12 text-center">
           <MdOutlineMailOutline size={48} className="text-white/10 mx-auto mb-3" />
           <p className="text-white font-medium">No invitations sent yet</p>
