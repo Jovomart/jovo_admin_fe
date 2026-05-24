@@ -146,7 +146,7 @@ const Toast = ({ toast }) => {
   const isErr = toast.type === "error";
   return (
     <div
-      className="fixed top-5 right-5 z-[200] flex items-center gap-2.5 px-4 py-3 rounded-2xl text-sm font-bold pointer-events-none"
+      className="fixed top-5 right-5 z-200 flex items-center gap-2.5 px-4 py-3 rounded-2xl text-sm font-bold pointer-events-none"
       style={{
         background: isErr ? "rgba(239,68,68,0.14)" : "rgba(16,185,129,0.14)",
         border: `1px solid ${isErr ? "rgba(239,68,68,0.3)" : "rgba(16,185,129,0.3)"}`,
@@ -196,7 +196,7 @@ const RejectModal = ({ product, onConfirm, onCancel, loading }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-100 flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(10px)" }}
       onClick={(e) => e.target === e.currentTarget && onCancel()}
     >
@@ -310,7 +310,7 @@ const RejectModal = ({ product, onConfirm, onCancel, loading }) => {
 ═══════════════════════════════════════════════════════════════ */
 const ApproveConfirm = ({ product, onConfirm, onCancel, loading }) => (
   <div
-    className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+    className="fixed inset-0 z-100 flex items-center justify-center p-4"
     style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(10px)" }}
     onClick={(e) => e.target === e.currentTarget && onCancel()}
   >
@@ -389,7 +389,7 @@ const ProductDetailDrawer = ({ product, onClose, onApprove, onReject, actionId }
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex justify-end"
+      className="fixed inset-0 z-90 flex justify-end"
       style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
@@ -708,7 +708,7 @@ const ProductCard = ({ product, onView, onApprove, onReject, actionId }) => {
           </span>
           {product.category && (
             <span
-              className="text-[10px] font-bold px-2 py-0.5 rounded-lg truncate max-w-[110px]"
+              className="text-[10px] font-bold px-2 py-0.5 rounded-lg truncate max-w-27.5"
               style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.3)" }}
             >
               {product.category}

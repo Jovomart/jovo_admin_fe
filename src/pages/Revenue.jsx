@@ -122,7 +122,7 @@ const Toast = ({ toast }) => {
   const isErr = toast.type === "error";
   return (
     <div
-      className="fixed top-5 right-5 z-[200] flex items-center gap-2.5 px-4 py-3 rounded-2xl text-sm font-bold pointer-events-none"
+      className="fixed top-5 right-5 z-200 flex items-center gap-2.5 px-4 py-3 rounded-2xl text-sm font-bold pointer-events-none"
       style={{
         background: isErr ? "rgba(239,68,68,0.14)" : "rgba(16,185,129,0.14)",
         border: `1px solid ${isErr ? "rgba(239,68,68,0.3)" : "rgba(16,185,129,0.3)"}`,
@@ -635,7 +635,7 @@ const Revenue = () => {
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
                         <FiHash size={11} className="text-white/20 shrink-0" />
-                        <span className="text-xs font-mono text-white/60 truncate max-w-[130px]">
+                        <span className="text-xs font-mono text-white/60 truncate max-w-32.5">
                           {r.order_ref ?? r.order_id ?? "—"}
                         </span>
                       </div>
@@ -643,7 +643,7 @@ const Revenue = () => {
 
                     {/* Seller */}
                     <td className="px-4 py-4">
-                      <span className="text-xs font-semibold text-white/55 truncate max-w-[140px] block">
+                      <span className="text-xs font-semibold text-white/55 truncate max-w-35 block">
                         {r.seller_name}
                       </span>
                     </td>
