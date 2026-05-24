@@ -15,6 +15,7 @@ import AcceptInvitation from "../pages/AcceptInvitation";
 import ActivityLogs from "../pages/ActivityLogs";
 import Categories from "../pages/Categories";
 import CampusGuideManagement from "../pages/CampusGuideManagement";
+import PickupStations from "../pages/PickupStations";
 
 const AppRoutes = () => (
   <Routes>
@@ -43,6 +44,7 @@ const AppRoutes = () => (
       <Route path="/admin-invitations" element={<AdminInvitations />} />{" "}
       <Route path="/activity-logs" element={<ActivityLogs />} />
       <Route path="/categories" element={<Categories />} />
+      <Route path="/pickup-stations" element={<PickupStations />} />
       <Route path="/campus-guide" element={<CampusGuideManagement />} />
     </Route>
 

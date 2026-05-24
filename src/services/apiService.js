@@ -14,7 +14,7 @@ class ApiService {
   getAccessToken() {
     return localStorage.getItem("admin_access_token");
   }
-  
+
   getRefreshToken() {
     return localStorage.getItem("admin_refresh_token");
   }
@@ -72,12 +72,13 @@ class ApiService {
       ...options,
     };
 
-    // For non-public endpoints, add the auth token
     if (!isPublic) {
       const token = this.getAccessToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-        console.log(`✅ Adding token to ${endpoint}, token length: ${token.length}`);
+        console.log(
+          `✅ Adding token to ${endpoint}, token length: ${token.length}`,
+        );
       } else {
         console.error(`❌ No token found for ${endpoint}`);
         throw new Error("No authentication token found. Please log in again.");
@@ -100,39 +101,23 @@ class ApiService {
       console.log(`📡 Response for ${endpoint}: status ${response.status}`);
 
       if (!response.ok) {
-        console.error(`Admin API Error [${response.status}] ${endpoint}:`, data);
-
-        // ─── FIX: Do NOT clear tokens or force-logout on 401 here. ───────────
-        // Clearing tokens on every 401 was nuking the session whenever a
-        // single endpoint (e.g. invitations) returned 401 due to permissions,
-        // an expired sub-token, or a backend quirk — even though the rest of
-        // the app was still working fine.
-        //
-        // Token clearing now only happens in two intentional places:
-        //   1. ApiService.logout()  — called by the AuthContext logout action.
-        //   2. AuthContext init     — when the stored token is expired on load.
-        //
-        // If you need to force a full logout on 401 (e.g. after a refresh-token
-        // flow fails), dispatch a custom event that AuthContext can listen to:
-        //
-        //   window.dispatchEvent(new Event("auth:session-expired"));
-        //
-        // and handle it in AuthContext with a useEffect listener.
-        // ─────────────────────────────────────────────────────────────────────
+        console.error(
+          `Admin API Error [${response.status}] ${endpoint}:`,
+          data,
+        );
 
         if (response.status === 401) {
-          // Surface a clear, actionable message without killing the session.
           const serverMessage = this.extractErrorMessage(data, 401);
           throw new Error(
             serverMessage && serverMessage !== "Request failed with status 401"
               ? serverMessage
-              : "Access denied. You may not have permission for this action, or your session has expired. Try logging out and back in."
+              : "Access denied. You may not have permission for this action, or your session has expired. Try logging out and back in.",
           );
         }
 
         throw new Error(this.extractErrorMessage(data, response.status));
       }
-      
+
       return data;
     } catch (error) {
       console.error(`🔥 Request failed for ${endpoint}:`, error);
@@ -170,36 +155,34 @@ class ApiService {
       method: "POST",
       body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
     });
-    
-    // Extract token from response
+
     const tokens = response.data || response;
     const accessToken = tokens.access_token;
-    
+
     console.log("🔐 Login response:", response);
     console.log("🔐 Access token found:", !!accessToken);
-    
-    // Store only access token
+
     if (accessToken) {
       this.storeTokens(accessToken, null);
       console.log("✅ Access token stored successfully");
     } else {
       console.error("❌ No access token in login response:", response);
     }
-    
+
     return response;
   }
 
   async sendForgotPasswordCode(email) {
     return this.makeRequest(
       `/admin/auth/send-forgotten-password-code?email=${encodeURIComponent(email)}`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
   async resetPasswordWithCode(email, code, newPassword, confirmPassword) {
     return this.makeRequest(
       `/admin/auth/reset-password-with-code?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&new_password=${encodeURIComponent(newPassword)}&confirm_password=${encodeURIComponent(confirmPassword)}`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
@@ -279,7 +262,9 @@ class ApiService {
 
   async getInvitations() {
     console.log("📋 Fetching invitations...");
-    const result = await this.makeRequest("/admin/invitation/invitations", { method: "GET" });
+    const result = await this.makeRequest("/admin/invitation/invitations", {
+      method: "GET",
+    });
     console.log("📋 Invitations result:", result);
     return result;
   }
@@ -312,14 +297,14 @@ class ApiService {
   async resendInvitation(invitationId) {
     return this.makeRequest(
       `/admin/invitation/resend-invitation/${invitationId}`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
   async revokeInvitation(invitationId) {
     return this.makeRequest(
       `/admin/invitation/revoke-invitation/${invitationId}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
   }
 
@@ -379,28 +364,28 @@ class ApiService {
   async getAvailableDeliveryOptions(cartTotal, totalWeight) {
     return this.makeRequest(
       `/admin/delivery/options/available?cart_total=${cartTotal}&total_weight=${totalWeight}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
   async deactivateDeliveryOption(deliveryId) {
     return this.makeRequest(
       `/admin/delivery/options/${deliveryId}/deactivate`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
   async reactivateDeliveryOption(deliveryId) {
     return this.makeRequest(
       `/admin/delivery/options/${deliveryId}/reactivate`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
   async permanentlyDeleteDeliveryOption(deliveryId) {
     return this.makeRequest(
       `/admin/delivery/options/${deliveryId}/permanently-delete`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
   }
 
@@ -430,7 +415,7 @@ class ApiService {
   async getAdminCategories(
     categoryType = null,
     includeInactive = false,
-    includeSubcategories = false
+    includeSubcategories = false,
   ) {
     const params = new URLSearchParams();
     if (categoryType) params.append("category_type", categoryType);
@@ -438,7 +423,7 @@ class ApiService {
     params.append("include_subcategories", includeSubcategories);
     return this.makeRequest(
       `/admin/category/get-all-categories?${params.toString()}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
@@ -470,14 +455,14 @@ class ApiService {
   async deactivateCategory(categoryId) {
     return this.makeRequest(
       `/admin/category/deactivate-category/${categoryId}`,
-      { method: "PATCH" }
+      { method: "PATCH" },
     );
   }
 
   async reactivateCategory(categoryId) {
     return this.makeRequest(
       `/admin/category/reactivate-category/${categoryId}`,
-      { method: "PATCH" }
+      { method: "PATCH" },
     );
   }
 
@@ -513,7 +498,7 @@ class ApiService {
   async getAdminSubcategories(
     categoryId = null,
     includeInactive = false,
-    includeEffectiveSchema = false
+    includeEffectiveSchema = false,
   ) {
     const params = new URLSearchParams();
     if (categoryId) params.append("category_id", categoryId);
@@ -521,7 +506,7 @@ class ApiService {
     params.append("include_effective_schema", includeEffectiveSchema);
     return this.makeRequest(
       `/admin/category/subcategory/get-all-subcategories?${params.toString()}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
@@ -530,7 +515,7 @@ class ApiService {
     params.append("include_effective_schema", includeEffectiveSchema);
     return this.makeRequest(
       `/admin/category/subcategory/get-subcategory/${subcategoryId}?${params.toString()}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
@@ -549,28 +534,28 @@ class ApiService {
 
     return this.makeRequest(
       `/admin/category/subcategory/update-subcategory/${subcategoryId}`,
-      { method: "PUT", body: JSON.stringify(payload) }
+      { method: "PUT", body: JSON.stringify(payload) },
     );
   }
 
   async deactivateSubcategory(subcategoryId) {
     return this.makeRequest(
       `/admin/category/subcategory/deactivate-subcategory/${subcategoryId}`,
-      { method: "PATCH" }
+      { method: "PATCH" },
     );
   }
 
   async reactivateSubcategory(subcategoryId) {
     return this.makeRequest(
       `/admin/category/subcategory/reactivate-subcategory/${subcategoryId}`,
-      { method: "PATCH" }
+      { method: "PATCH" },
     );
   }
 
   async deleteSubcategory(subcategoryId) {
     return this.makeRequest(
       `/admin/category/subcategory/delete-subcategory/${subcategoryId}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
   }
 
@@ -619,7 +604,7 @@ class ApiService {
       schoolEmail,
       schoolWebsite,
       schoolLogoUrl,
-    }
+    },
   ) {
     return this.makeRequest(`/admin/school/update-school/${schoolId}`, {
       method: "PUT",
@@ -680,7 +665,7 @@ class ApiService {
     const query = qs.toString();
     return this.makeRequest(
       `/admin/campus-guide/all${query ? `?${query}` : ""}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
@@ -728,7 +713,7 @@ class ApiService {
     const query = qs.toString();
     return this.makeRequest(
       `/admin/campus-guide/reviews/all${query ? `?${query}` : ""}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
@@ -756,6 +741,90 @@ class ApiService {
       method: "GET",
     });
   }
+
+  // ── PICKUP STATIONS ───────────────────────────────────────────────────────
+
+  /**
+   * Create a new pickup station for a specific school.
+   * POST /admin/pickup-station/create/{school_id}
+   */
+  async createPickupStation(schoolId, data) {
+    return this.makeRequest(`/admin/pickup-station/create/${schoolId}`, {
+      method: "POST",
+      body: JSON.stringify({
+        station_name: data.station_name,
+        station_address: data.station_address,
+        latitude: Number(data.latitude),
+        longitude: Number(data.longitude),
+        is_active: Boolean(data.is_active),
+      }),
+    });
+  }
+
+  /**
+   * Update an existing pickup station.
+   * PUT /admin/pickup-station/update/{station_id}
+   */
+  async updatePickupStation(stationId, data) {
+    return this.makeRequest(`/admin/pickup-station/update/${stationId}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        station_name: data.station_name,
+        station_address: data.station_address,
+        latitude: Number(data.latitude),
+        longitude: Number(data.longitude),
+        is_active: Boolean(data.is_active),
+      }),
+    });
+  }
+
+  /**
+   * Permanently delete a pickup station.
+   * DELETE /admin/pickup-station/delete/{station_id}
+   */
+  async deletePickupStation(stationId) {
+    return this.makeRequest(`/admin/pickup-station/delete/${stationId}`, {
+      method: "DELETE",
+    });
+  }
+
+  /**
+   * Get all pickup stations for a school with optional filters.
+   * GET /admin/pickup-station/get-all/{school_id}
+   */
+  async getAllPickupStations(schoolId, params = {}) {
+    const qs = new URLSearchParams();
+    // Only append is_active if explicitly set (not null/undefined)
+    if (
+      params.is_active !== undefined &&
+      params.is_active !== null &&
+      params.is_active !== ""
+    ) {
+      qs.append("is_active", params.is_active);
+    }
+    if (params.search && params.search.trim()) {
+      qs.append("search", params.search.trim());
+    }
+    if (params.page) qs.append("page", params.page);
+    if (params.per_page) qs.append("per_page", params.per_page);
+    const query = qs.toString();
+    return this.makeRequest(
+      `/admin/pickup-station/get-all/${schoolId}${query ? `?${query}` : ""}`,
+      { method: "GET" },
+    );
+  }
+
+  /**
+   * Get a single pickup station by its ID.
+   * GET /admin/pickup-station/get/{station_id}
+   */
+  async getPickupStationById(stationId) {
+    return this.makeRequest(`/admin/pickup-station/get/${stationId}`, {
+      method: "GET",
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   async logout() {
     this.clearTokens();
