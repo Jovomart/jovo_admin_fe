@@ -29,11 +29,22 @@ const Sidebar = ({ mobileOpen, onClose }) => {
   const baseNavItems = [
     { label: "Dashboard", icon: <FiGrid size={18} />, to: "/dashboard" },
     { label: "Sellers", icon: <MdStorefront size={18} />, to: "/sellers" },
+    { label: "Revenue", icon: <FiGrid size={18} />, to: "/revenue" },
     { label: "Schools", icon: <MdOutlineSchool size={18} />, to: "/schools" },
-    { label: "Pickup Stations", icon: <FiUsers size={18} />, to: "/pickup-stations" },
+    {
+      label: "Pickup Stations",
+      icon: <FiUsers size={18} />,
+      to: "/pickup-stations",
+    },
     { label: "Campus Guide", icon: <FiUsers size={18} />, to: "/campus-guide" },
     { label: "Categories", icon: <FiGrid size={18} />, to: "/categories" },
+    {
+      label: "Admin Products",
+      icon: <FiShoppingBag size={18} />,
+      to: "/admin-products",
+    },
     { label: "Delivery", icon: <FiTruck size={18} />, to: "/delivery" },
+
     { label: "Settings", icon: <FiSettings size={18} />, to: "/settings" },
   ];
 

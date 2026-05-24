@@ -824,7 +824,65 @@ class ApiService {
     });
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── PRODUCT MANAGEMENT ────────────────────────────────────────
+
+  async getPendingProducts({ page = 1, page_size = 20 } = {}) {
+    const params = new URLSearchParams();
+    params.append("page", page);
+    params.append("page_size", page_size);
+    return this.makeRequest(`/admin/product/pending?${params.toString()}`, {
+      method: "GET",
+    });
+  }
+
+  async getAllProducts({ status_filter = null, page = 1, page_size = 20 } = {}) {
+    const params = new URLSearchParams();
+    params.append("page", page);
+    params.append("page_size", page_size);
+    if (status_filter) params.append("status_filter", status_filter);
+    return this.makeRequest(`/admin/product?${params.toString()}`, {
+      method: "GET",
+    });
+  }
+
+  async getProductById(productId) {
+    return this.makeRequest(`/admin/product/${productId}`, { method: "GET" });
+  }
+
+  async approveProduct(productId) {
+    return this.makeRequest(`/admin/product/${productId}/approve`, {
+      method: "POST",
+    });
+  }
+
+  async rejectProduct(productId, rejectionReason) {
+    return this.makeRequest(`/admin/product/${productId}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ rejection_reason: rejectionReason }),
+    });
+  }
+
+  // ── REVENUE MANAGEMENT ──────────────────────────────────────────────────────────
+
+// GET /api/v1/admin/revenue/summary - Get platform revenue summary
+async getRevenueSummary() {
+  return this.makeRequest("/admin/revenue/summary", {
+    method: "GET",
+  });
+}
+
+// GET /api/v1/admin/revenue - List platform revenue records
+async getRevenueRecords(params = {}) {
+  const queryParams = new URLSearchParams();
+  if (params.status) queryParams.append("status", params.status);
+  if (params.skip !== undefined) queryParams.append("skip", params.skip);
+  if (params.limit) queryParams.append("limit", params.limit);
+  
+  const queryString = queryParams.toString();
+  return this.makeRequest(`/admin/revenue${queryString ? `?${queryString}` : ""}`, {
+    method: "GET",
+  });
+}
 
   async logout() {
     this.clearTokens();

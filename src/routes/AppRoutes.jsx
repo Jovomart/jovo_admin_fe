@@ -16,6 +16,8 @@ import ActivityLogs from "../pages/ActivityLogs";
 import Categories from "../pages/Categories";
 import CampusGuideManagement from "../pages/CampusGuideManagement";
 import PickupStations from "../pages/PickupStations";
+import AdminProducts from "../pages/AdminProducts";
+import Revenue from "../pages/Revenue";
 
 const AppRoutes = () => (
   <Routes>
@@ -46,6 +48,8 @@ const AppRoutes = () => (
       <Route path="/categories" element={<Categories />} />
       <Route path="/pickup-stations" element={<PickupStations />} />
       <Route path="/campus-guide" element={<CampusGuideManagement />} />
+      <Route path="/admin-products" element={<AdminProducts />} />
+      <Route path="/revenue" element={<Revenue />} />
     </Route>
 
     <Route path="*" element={<Navigate to="/dashboard" replace />} />
