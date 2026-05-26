@@ -1,5 +1,4 @@
 // src/pages/AdminProducts.jsx
-// Add these methods to your ApiService FIRST (see bottom of this file)
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import ApiService from "../services/apiService";
@@ -10,7 +9,6 @@ import {
   FiCheck,
   FiAlertCircle,
   FiRefreshCw,
-  FiChevronDown,
   FiChevronLeft,
   FiChevronRight,
   FiEye,
@@ -18,14 +16,12 @@ import {
   FiXCircle,
   FiClock,
   FiLoader,
-  FiFilter,
   FiStar,
   FiTag,
   FiUser,
   FiCalendar,
   FiImage,
   FiLayers,
-  FiAlertTriangle,
   FiArrowLeft,
 } from "react-icons/fi";
 
@@ -33,7 +29,22 @@ import {
    UTILITIES
 ═══════════════════════════════════════════════════════════════ */
 
-const parseProducts = (raw) => {
+/* Maps whatever the API sends → one of: "pending" | "approved" | "rejected"
+   hint: the tab we fetched from — used as authoritative fallback when the
+   product's own status field is missing or unrecognised                      */
+const normalizeStatus = (raw, hint) => {
+  if (raw !== null && raw !== undefined) {
+    const s = String(raw).toLowerCase().trim();
+    if (["approved", "active", "accepted", "published", "1", "true"].includes(s)) return "approved";
+    if (["rejected", "declined", "denied", "banned", "0", "false"].includes(s)) return "rejected";
+    if (["pending", "review", "awaiting", "under_review", "in_review"].includes(s)) return "pending";
+  }
+  // Fall back to the tab we fetched from — it's always correct
+  if (hint && hint !== "all") return hint;
+  return "pending";
+};
+
+const parseProducts = (raw, statusHint = null) => {
   if (!raw) return { items: [], total: 0, page: 1, pages: 1 };
 
   const data = raw.data || raw;
@@ -43,7 +54,6 @@ const parseProducts = (raw) => {
   let page = 1;
   let pages = 1;
 
-  // Unwrap pagination wrappers
   if (Array.isArray(data?.products)) {
     items = data.products;
     total = data.total ?? data.total_count ?? items.length;
@@ -69,31 +79,170 @@ const parseProducts = (raw) => {
     total = items.length;
   }
 
-  // Normalize each product
-  const normalized = items.map((p) => ({
-    ...p,
-    id: p.id || p._id || p.product_id,
-    name: p.name || p.product_name || p.title,
-    price: p.price ?? p.selling_price ?? p.amount ?? 0,
-    status: p.status || p.approval_status || "pending",
-    seller_name:
+  const normalized = items.map((p) => {
+    // ── id ────────────────────────────────────────────────────────
+    const id =
+      p.id ?? p._id ?? p.product_id ?? p.productId ?? p.uuid ?? null;
+
+    // ── name ──────────────────────────────────────────────────────
+    const name =
+      p.product_name || p.productName || p.name || p.title || p.item_name || "—";
+
+    // ── price ─────────────────────────────────────────────────────
+    // API schema: product_original_price + product_discount_price (when is_on_sale)
+    const rawPrice =
+      (p.is_on_sale && (p.product_discount_price ?? p.productDiscountPrice))
+        ? (p.product_discount_price ?? p.productDiscountPrice)
+        : p.product_original_price ??
+          p.productOriginalPrice ??
+          p.price ??
+          p.selling_price ??
+          p.sellingPrice ??
+          p.sale_price ??
+          p.salePrice ??
+          p.unit_price ??
+          p.unitPrice ??
+          p.amount ??
+          p.product_price ??
+          p.productPrice ??
+          p.base_price ??
+          p.basePrice ??
+          p.cost ??
+          p.retail_price ??
+          p.retailPrice ??
+          p.list_price ??
+          p.listPrice ??
+          null;
+    const price = rawPrice !== null ? parseFloat(rawPrice) : null;
+    const original_price = p.product_original_price ?? p.productOriginalPrice ?? null;
+    const is_on_sale = p.is_on_sale ?? p.isOnSale ?? false;
+
+    // ── status ────────────────────────────────────────────────────
+    const status = normalizeStatus(
+      p.status ??
+        p.approval_status ??
+        p.approvalStatus ??
+        p.product_status ??
+        p.productStatus ??
+        p.state ??
+        p.listing_status ??
+        p.listingStatus,
+      statusHint
+    );
+
+    // ── seller name ───────────────────────────────────────────────
+    const seller_name =
       p.seller_name ||
-      p.seller?.name ||
+      p.sellerName ||
       p.seller?.business_name ||
+      p.seller?.businessName ||
+      p.seller?.shop_name ||
+      p.seller?.shopName ||
+      p.seller?.store_name ||
+      p.seller?.storeName ||
+      p.seller?.name ||
+      p.seller?.full_name ||
+      p.seller?.fullName ||
+      p.seller?.username ||
       p.vendor_name ||
-      "Unknown Seller",
-    category: p.category || p.category_name || p.category?.name || "Uncategorised",
-    images: p.images || p.product_images || (p.image_url ? [p.image_url] : []),
-    created_at: p.created_at || p.createdAt,
-    description: p.description || p.product_description || "",
-    stock: p.stock ?? p.quantity ?? p.stock_quantity ?? null,
-  }));
+      p.vendorName ||
+      p.vendor?.name ||
+      p.vendor?.business_name ||
+      p.store_name ||
+      p.storeName ||
+      p.shop_name ||
+      p.shopName ||
+      p.business_name ||
+      p.businessName ||
+      null;
+
+    // ── category ──────────────────────────────────────────────────
+    const category =
+      p.category_name ||
+      p.categoryName ||
+      p.category?.name ||
+      (typeof p.category === "string" ? p.category : null) ||
+      p.subcategory?.name ||
+      p.sub_category ||
+      "Uncategorised";
+
+    // ── images ────────────────────────────────────────────────────
+    const images = (() => {
+      const raw =
+        p.images ||
+        p.product_images ||
+        p.productImages ||
+        p.image_urls ||
+        p.imageUrls ||
+        p.photos ||
+        null;
+      if (Array.isArray(raw)) return raw.filter(Boolean);
+      // single-image fields
+      const single =
+        p.image_url ||
+        p.imageUrl ||
+        p.thumbnail ||
+        p.image ||
+        p.photo ||
+        null;
+      return single ? [single] : [];
+    })();
+
+    // ── dates ─────────────────────────────────────────────────────
+    const created_at =
+      p.created_at || p.createdAt || p.date_created || p.dateCreated || null;
+
+    // ── description ───────────────────────────────────────────────
+    const description =
+      p.product_description ||
+      p.productDescription ||
+      p.description ||
+      p.details ||
+      p.summary ||
+      "";
+
+    // ── stock ─────────────────────────────────────────────────────
+    const stock =
+      p.stock ??
+      p.quantity ??
+      p.stock_quantity ??
+      p.stockQuantity ??
+      p.quantity_available ??
+      p.available_quantity ??
+      p.inventory ??
+      null;
+
+    // ── rating ────────────────────────────────────────────────────
+    const average_rating =
+      p.average_rating ??
+      p.averageRating ??
+      p.rating ??
+      p.avg_rating ??
+      undefined;
+
+    return {
+      ...p,
+      id,
+      name,
+      price,
+      original_price,
+      is_on_sale,
+      status,
+      seller_name,
+      category,
+      images,
+      created_at,
+      description,
+      stock,
+      average_rating,
+    };
+  });
 
   return { items: normalized, total, page, pages };
 };
 
 const formatCurrency = (amount) => {
-  if (amount === null || amount === undefined) return "—";
+  if (amount === null || amount === undefined || isNaN(amount)) return "—";
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
@@ -171,7 +320,11 @@ const StatusBadge = ({ status }) => {
   return (
     <span
       className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-1 rounded-full"
-      style={{ color: cfg.color, background: cfg.bg, border: `1px solid ${cfg.border}` }}
+      style={{
+        color: cfg.color,
+        background: cfg.bg,
+        border: `1px solid ${cfg.border}`,
+      }}
     >
       <Icon size={10} />
       {cfg.label}
@@ -198,7 +351,7 @@ const RejectModal = ({ product, onConfirm, onCancel, loading }) => {
     <div
       className="fixed inset-0 z-100 flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(10px)" }}
-      onClick={(e) => e.target === e.currentTarget && onCancel()}
+      onClick={(e) => e.target === e.currentTarget && !loading && onCancel()}
     >
       <div
         className="w-full max-w-md rounded-3xl flex flex-col"
@@ -215,7 +368,10 @@ const RejectModal = ({ product, onConfirm, onCancel, loading }) => {
         >
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}
+            style={{
+              background: "rgba(239,68,68,0.1)",
+              border: "1px solid rgba(239,68,68,0.2)",
+            }}
           >
             <FiXCircle size={16} className="text-red-400" />
           </div>
@@ -251,7 +407,9 @@ const RejectModal = ({ product, onConfirm, onCancel, loading }) => {
                 border: err
                   ? "1px solid rgba(239,68,68,0.4)"
                   : "1px solid rgba(255,255,255,0.08)",
-                background: err ? "rgba(239,68,68,0.05)" : "rgba(255,255,255,0.04)",
+                background: err
+                  ? "rgba(239,68,68,0.05)"
+                  : "rgba(255,255,255,0.04)",
               }}
               onFocus={(e) =>
                 (e.target.style.borderColor = err
@@ -263,6 +421,7 @@ const RejectModal = ({ product, onConfirm, onCancel, loading }) => {
                   ? "rgba(239,68,68,0.4)"
                   : "rgba(255,255,255,0.08)")
               }
+              disabled={loading}
             />
             {err && <p className="text-xs text-red-400 mt-1">{err}</p>}
           </div>
@@ -276,7 +435,7 @@ const RejectModal = ({ product, onConfirm, onCancel, loading }) => {
           <button
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 py-3 rounded-2xl text-sm font-bold text-white/40 hover:text-white transition-colors"
+            className="flex-1 py-3 rounded-2xl text-sm font-bold text-white/40 hover:text-white transition-colors disabled:opacity-40"
             style={{ background: "rgba(255,255,255,0.05)" }}
           >
             Cancel
@@ -312,7 +471,7 @@ const ApproveConfirm = ({ product, onConfirm, onCancel, loading }) => (
   <div
     className="fixed inset-0 z-100 flex items-center justify-center p-4"
     style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(10px)" }}
-    onClick={(e) => e.target === e.currentTarget && onCancel()}
+    onClick={(e) => e.target === e.currentTarget && !loading && onCancel()}
   >
     <div
       className="w-full max-w-sm rounded-3xl p-7 text-center"
@@ -324,7 +483,10 @@ const ApproveConfirm = ({ product, onConfirm, onCancel, loading }) => (
     >
       <div
         className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5"
-        style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)" }}
+        style={{
+          background: "rgba(16,185,129,0.1)",
+          border: "1px solid rgba(16,185,129,0.2)",
+        }}
       >
         <FiCheckCircle size={24} className="text-emerald-400" />
       </div>
@@ -346,7 +508,8 @@ const ApproveConfirm = ({ product, onConfirm, onCancel, loading }) => (
       <div className="flex gap-3">
         <button
           onClick={onCancel}
-          className="flex-1 py-3 rounded-xl text-sm font-bold text-white/40 hover:text-white transition-colors"
+          disabled={loading}
+          className="flex-1 py-3 rounded-xl text-sm font-bold text-white/40 hover:text-white transition-colors disabled:opacity-40"
           style={{ background: "rgba(255,255,255,0.05)" }}
         >
           Cancel
@@ -377,7 +540,13 @@ const ApproveConfirm = ({ product, onConfirm, onCancel, loading }) => (
 /* ═══════════════════════════════════════════════════════════════
    PRODUCT DETAIL DRAWER
 ═══════════════════════════════════════════════════════════════ */
-const ProductDetailDrawer = ({ product, onClose, onApprove, onReject, actionId }) => {
+const ProductDetailDrawer = ({
+  product,
+  onClose,
+  onApprove,
+  onReject,
+  actionId,
+}) => {
   const [imgIdx, setImgIdx] = useState(0);
   const busy = actionId === product?.id;
 
@@ -438,7 +607,8 @@ const ProductDetailDrawer = ({ product, onClose, onApprove, onReject, actionId }
                   style={{ maxHeight: 260 }}
                   onError={(e) => {
                     e.target.style.display = "none";
-                    e.target.nextSibling && (e.target.nextSibling.style.display = "flex");
+                    e.target.nextSibling &&
+                      (e.target.nextSibling.style.display = "flex");
                   }}
                 />
                 <div
@@ -459,9 +629,7 @@ const ProductDetailDrawer = ({ product, onClose, onApprove, onReject, actionId }
                           width: i === imgIdx ? 20 : 6,
                           height: 6,
                           background:
-                            i === imgIdx
-                              ? "#FF8C00"
-                              : "rgba(255,255,255,0.2)",
+                            i === imgIdx ? "#FF8C00" : "rgba(255,255,255,0.2)",
                         }}
                       />
                     ))}
@@ -489,12 +657,16 @@ const ProductDetailDrawer = ({ product, onClose, onApprove, onReject, actionId }
               >
                 {product.name}
               </h2>
-              <p
-                className="text-2xl font-black"
-                style={{ color: "#FF8C00" }}
-              >
-                {formatCurrency(product.price)}
-              </p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl font-black" style={{ color: "#FF8C00" }}>
+                  {formatCurrency(product.price)}
+                </p>
+                {product.is_on_sale && product.original_price != null && (
+                  <p className="text-sm line-through" style={{ color: "rgba(255,255,255,0.2)" }}>
+                    {formatCurrency(product.original_price)}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Meta chips */}
@@ -533,8 +705,12 @@ const ProductDetailDrawer = ({ product, onClose, onApprove, onReject, actionId }
               style={{ border: "1px solid rgba(255,255,255,0.06)" }}
             >
               {[
-                { icon: FiUser, label: "Seller", value: product.seller_name },
-                { icon: FiCalendar, label: "Submitted", value: formatDate(product.created_at) },
+                { icon: FiUser, label: "Seller", value: product.seller_name || "Seller name unavailable" },
+                {
+                  icon: FiCalendar,
+                  label: "Submitted",
+                  value: formatDate(product.created_at),
+                },
                 {
                   icon: FiStar,
                   label: "Rating",
@@ -550,7 +726,8 @@ const ProductDetailDrawer = ({ product, onClose, onApprove, onReject, actionId }
                   style={{
                     borderBottom:
                       i < 2 ? "1px solid rgba(255,255,255,0.04)" : "none",
-                    background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent",
+                    background:
+                      i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent",
                   }}
                 >
                   <Icon size={13} className="text-white/25 shrink-0" />
@@ -675,7 +852,8 @@ const ProductCard = ({ product, onView, onApprove, onReject, actionId }) => {
           <img
             src={image}
             alt={product.name}
-            className="object-cover w-full h-full transition-transform group-hover:scale-105"
+            className="object-contain w-full h-full transition-transform group-hover:scale-102 p-2"
+            style={{ background: "rgba(255,255,255,0.03)" }}
             onError={(e) => {
               e.target.style.display = "none";
               e.target.nextSibling.style.display = "flex";
@@ -689,7 +867,6 @@ const ProductCard = ({ product, onView, onApprove, onReject, actionId }) => {
           <span className="text-[10px] text-white/15">No image</span>
         </div>
 
-        {/* Status badge overlay */}
         <div className="absolute top-2.5 right-2.5">
           <StatusBadge status={status} />
         </div>
@@ -700,16 +877,28 @@ const ProductCard = ({ product, onView, onApprove, onReject, actionId }) => {
         <p className="text-sm font-black text-white leading-tight line-clamp-2 mb-1">
           {product.name}
         </p>
-        <p className="text-[11px] text-white/35 mb-2 truncate">{product.seller_name}</p>
+        <p className="text-[11px] mb-2 truncate" style={{ color: product.seller_name ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.15)" }}>
+          {product.seller_name || "Seller name unavailable"}
+        </p>
 
         <div className="flex items-center justify-between mb-3">
-          <span className="text-base font-black" style={{ color: "#FF8C00" }}>
-            {formatCurrency(product.price)}
-          </span>
+          <div className="flex flex-col">
+            <span className="text-base font-black" style={{ color: "#FF8C00" }}>
+              {formatCurrency(product.price)}
+            </span>
+            {product.is_on_sale && product.original_price != null && (
+              <span className="text-[10px] line-through" style={{ color: "rgba(255,255,255,0.2)" }}>
+                {formatCurrency(product.original_price)}
+              </span>
+            )}
+          </div>
           {product.category && (
             <span
               className="text-[10px] font-bold px-2 py-0.5 rounded-lg truncate max-w-27.5"
-              style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.3)" }}
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                color: "rgba(255,255,255,0.3)",
+              }}
             >
               {product.category}
             </span>
@@ -748,7 +937,11 @@ const ProductCard = ({ product, onView, onApprove, onReject, actionId }) => {
                   color: "#EF4444",
                 }}
               >
-                {busy ? <FiLoader size={12} className="animate-spin" /> : <FiXCircle size={12} />}
+                {busy ? (
+                  <FiLoader size={12} className="animate-spin" />
+                ) : (
+                  <FiXCircle size={12} />
+                )}
                 Reject
               </button>
               <button
@@ -781,17 +974,38 @@ const ProductCard = ({ product, onView, onApprove, onReject, actionId }) => {
 const SkeletonCard = () => (
   <div
     className="rounded-2xl animate-pulse overflow-hidden"
-    style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.05)" }}
+    style={{
+      background: "#0d0d14",
+      border: "1px solid rgba(255,255,255,0.05)",
+    }}
   >
     <div style={{ height: 160, background: "rgba(255,255,255,0.04)" }} />
     <div className="p-4 space-y-3">
-      <div className="h-3.5 rounded-lg w-3/4" style={{ background: "rgba(255,255,255,0.05)" }} />
-      <div className="h-2.5 rounded-lg w-1/2" style={{ background: "rgba(255,255,255,0.03)" }} />
-      <div className="h-4 rounded-lg w-1/3" style={{ background: "rgba(255,255,255,0.05)" }} />
+      <div
+        className="h-3.5 rounded-lg w-3/4"
+        style={{ background: "rgba(255,255,255,0.05)" }}
+      />
+      <div
+        className="h-2.5 rounded-lg w-1/2"
+        style={{ background: "rgba(255,255,255,0.03)" }}
+      />
+      <div
+        className="h-4 rounded-lg w-1/3"
+        style={{ background: "rgba(255,255,255,0.05)" }}
+      />
       <div className="flex gap-2 pt-1">
-        <div className="h-9 rounded-xl flex-1" style={{ background: "rgba(255,255,255,0.04)" }} />
-        <div className="h-9 rounded-xl flex-1" style={{ background: "rgba(255,255,255,0.04)" }} />
-        <div className="h-9 rounded-xl flex-1" style={{ background: "rgba(255,255,255,0.04)" }} />
+        <div
+          className="h-9 rounded-xl flex-1"
+          style={{ background: "rgba(255,255,255,0.04)" }}
+        />
+        <div
+          className="h-9 rounded-xl flex-1"
+          style={{ background: "rgba(255,255,255,0.04)" }}
+        />
+        <div
+          className="h-9 rounded-xl flex-1"
+          style={{ background: "rgba(255,255,255,0.04)" }}
+        />
       </div>
     </div>
   </div>
@@ -865,7 +1079,6 @@ const Pagination = ({ page, pages, total, onPageChange, loading }) => {
           Prev
         </button>
 
-        {/* Page number pills — show up to 5 */}
         {Array.from({ length: Math.min(pages, 5) }, (_, i) => {
           let p;
           if (pages <= 5) p = i + 1;
@@ -884,9 +1097,7 @@ const Pagination = ({ page, pages, total, onPageChange, loading }) => {
                     ? "linear-gradient(135deg, #B42225, #FF8C00)"
                     : "rgba(255,255,255,0.05)",
                 border:
-                  p === page
-                    ? "none"
-                    : "1px solid rgba(255,255,255,0.08)",
+                  p === page ? "none" : "1px solid rgba(255,255,255,0.08)",
                 color: p === page ? "#fff" : "rgba(255,255,255,0.35)",
                 boxShadow:
                   p === page ? "0 4px 14px rgba(180,34,37,0.3)" : "none",
@@ -921,16 +1132,16 @@ const Pagination = ({ page, pages, total, onPageChange, loading }) => {
 const AdminProducts = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false); // separate loading for approve/reject
   const [error, setError] = useState("");
 
-  const [statusFilter, setStatusFilter] = useState("pending"); // pending | approved | rejected | all
+  const [statusFilter, setStatusFilter] = useState("pending");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
 
   const PAGE_SIZE = 18;
 
-  // Modal state
   const [viewProduct, setViewProduct] = useState(null);
   const [approveTarget, setApproveTarget] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
@@ -945,7 +1156,31 @@ const AdminProducts = () => {
     toastTimer.current = setTimeout(() => setToast(null), 3800);
   }, []);
 
-  /* ── Fetch products ───────────────────────────────────────── */
+  /* ── Counts (all three statuses, always visible) ────────────── */
+  const [counts, setCounts] = useState({ pending: null, approved: null, rejected: null });
+
+  const fetchCounts = useCallback(async () => {
+    try {
+      const [pendingRaw, approvedRaw, rejectedRaw] = await Promise.all([
+        ApiService.getPendingProducts({ page: 1, page_size: 1 }),
+        ApiService.getAllProducts({ status_filter: "approved", page: 1, page_size: 1 }),
+        ApiService.getAllProducts({ status_filter: "rejected", page: 1, page_size: 1 }),
+      ]);
+      setCounts({
+        pending: parseProducts(pendingRaw, "pending").total,
+        approved: parseProducts(approvedRaw, "approved").total,
+        rejected: parseProducts(rejectedRaw, "rejected").total,
+      });
+    } catch {
+      // Counts are non-critical — fail silently
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCounts();
+  }, [fetchCounts]);
+
+  /* ── Fetch products ─────────────────────────────────────────── */
   const fetchProducts = useCallback(
     async (showLoader = true) => {
       if (showLoader) setLoading(true);
@@ -953,8 +1188,10 @@ const AdminProducts = () => {
       try {
         let raw;
         if (statusFilter === "pending") {
-          // Use the dedicated pending endpoint
-          raw = await ApiService.getPendingProducts({ page, page_size: PAGE_SIZE });
+          raw = await ApiService.getPendingProducts({
+            page,
+            page_size: PAGE_SIZE,
+          });
         } else {
           raw = await ApiService.getAllProducts({
             status_filter: statusFilter === "all" ? undefined : statusFilter,
@@ -962,7 +1199,13 @@ const AdminProducts = () => {
             page_size: PAGE_SIZE,
           });
         }
-        const { items, total, pages } = parseProducts(raw);
+        const { items, total, pages } = parseProducts(raw, statusFilter);
+        // DEBUG — remove once fields are confirmed correct:
+        if (items.length > 0) {
+          console.log("📦 Raw product sample:", JSON.stringify(items[0].__proto__ ? Object.assign({}, raw?.data?.products?.[0] || raw?.data?.items?.[0] || raw?.data?.[0] || (Array.isArray(raw?.data) ? raw.data[0] : null) || raw?.products?.[0] || raw?.items?.[0] || raw?.[0] || "see raw below") : null, 2));
+          console.log("📦 Normalized sample:", { id: items[0].id, name: items[0].name, price: items[0].price, status: items[0].status, seller_name: items[0].seller_name, images: items[0].images });
+          console.log("📦 Full raw response:", raw);
+        }
         setProducts(items);
         setPagination({ total, pages });
       } catch (err) {
@@ -980,44 +1223,142 @@ const AdminProducts = () => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Reset to page 1 when filter changes
   useEffect(() => {
     setPage(1);
   }, [statusFilter]);
 
-  /* ── Approve ──────────────────────────────────────────────── */
+  /* ── Approve ──────────────────────────────────────────────────
+     Flow:
+     1. Optimistically remove / update the product in local state immediately
+        so the UI reflects the change without waiting for a re-fetch.
+     2. Call the API.
+     3. On success → silent background re-fetch to sync server truth.
+     4. On failure → roll back the optimistic change and show an error.
+  ─────────────────────────────────────────────────────────────── */
   const handleApprove = async (productId) => {
     setActionId(productId);
+    setActionLoading(true);
+
+    // Snapshot for rollback
+    const prevProducts = products;
+    const prevPagination = pagination;
+
+    // Close modals immediately for snappy UX
+    setApproveTarget(null);
+    setViewProduct(null);
+
+    // Optimistic update:
+    // • On "pending" tab  → remove from list (it's no longer pending)
+    // • On "approved" tab → update status in place
+    // • On "all" tab      → update status in place
+    setProducts((prev) => {
+      if (statusFilter === "pending") {
+        const next = prev.filter((p) => p.id !== productId);
+        setPagination((pg) => ({
+          ...pg,
+          total: Math.max(0, pg.total - 1),
+        }));
+        return next;
+      }
+      return prev.map((p) =>
+        p.id === productId ? { ...p, status: "approved" } : p
+      );
+    });
+
+    // Optimistically adjust counts
+    setCounts((prev) => ({
+      ...prev,
+      pending: Math.max(0, (prev.pending ?? 1) - 1),
+      approved: (prev.approved ?? 0) + 1,
+    }));
+
     try {
       await ApiService.approveProduct(productId);
       showToast("Product approved successfully!");
-      setApproveTarget(null);
-      setViewProduct(null);
-      await fetchProducts(false);
+      // Background sync — don't show full-page loader
+      await Promise.all([fetchProducts(false), fetchCounts()]);
     } catch (err) {
+      // Roll back optimistic change
+      setProducts(prevProducts);
+      setPagination(prevPagination);
+      setCounts((prev) => ({
+        ...prev,
+        pending: (prev.pending ?? 0) + 1,
+        approved: Math.max(0, (prev.approved ?? 1) - 1),
+      }));
       showToast(err.message || "Failed to approve product.", "error");
     } finally {
       setActionId(null);
+      setActionLoading(false);
     }
   };
 
-  /* ── Reject ───────────────────────────────────────────────── */
+  /* ── Reject ───────────────────────────────────────────────────
+     Same optimistic pattern as approve.
+  ─────────────────────────────────────────────────────────────── */
   const handleReject = async (productId, reason) => {
     setActionId(productId);
+    setActionLoading(true);
+
+    const prevProducts = products;
+    const prevPagination = pagination;
+
+    // Close modals immediately
+    setRejectTarget(null);
+    setViewProduct(null);
+
+    // Optimistic update
+    setProducts((prev) => {
+      if (statusFilter === "pending") {
+        const next = prev.filter((p) => p.id !== productId);
+        setPagination((pg) => ({
+          ...pg,
+          total: Math.max(0, pg.total - 1),
+        }));
+        return next;
+      }
+      if (statusFilter === "approved") {
+        // Remove from approved list since it's now rejected
+        const next = prev.filter((p) => p.id !== productId);
+        setPagination((pg) => ({
+          ...pg,
+          total: Math.max(0, pg.total - 1),
+        }));
+        return next;
+      }
+      // "all" or "rejected" → update status in place
+      return prev.map((p) =>
+        p.id === productId ? { ...p, status: "rejected" } : p
+      );
+    });
+
+    // Optimistic counts update
+    setCounts((prev) => ({
+      ...prev,
+      pending: Math.max(0, (prev.pending ?? 1) - 1),
+      rejected: (prev.rejected ?? 0) + 1,
+    }));
+
     try {
       await ApiService.rejectProduct(productId, reason);
       showToast("Product rejected.");
-      setRejectTarget(null);
-      setViewProduct(null);
-      await fetchProducts(false);
+      await Promise.all([fetchProducts(false), fetchCounts()]);
     } catch (err) {
+      setProducts(prevProducts);
+      setPagination(prevPagination);
+      setCounts((prev) => ({
+        ...prev,
+        pending: (prev.pending ?? 0) + 1,
+        rejected: Math.max(0, (prev.rejected ?? 1) - 1),
+      }));
       showToast(err.message || "Failed to reject product.", "error");
     } finally {
       setActionId(null);
+      setActionLoading(false);
     }
   };
 
-  /* ── Client-side search filter ────────────────────────────── */
+  /* ── Client-side search filter ───────────────────────────────── */
   const filtered = products.filter((p) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
@@ -1027,11 +1368,6 @@ const AdminProducts = () => {
       p.category?.toLowerCase().includes(q)
     );
   });
-
-  /* ── Stat helpers ─────────────────────────────────────────── */
-  const pendingCount = statusFilter === "pending" ? pagination.total : undefined;
-  const approvedCount = statusFilter === "approved" ? pagination.total : undefined;
-  const rejectedCount = statusFilter === "rejected" ? pagination.total : undefined;
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -1053,16 +1389,16 @@ const AdminProducts = () => {
         <ApproveConfirm
           product={approveTarget}
           onConfirm={handleApprove}
-          onCancel={() => setApproveTarget(null)}
-          loading={actionId === approveTarget.id}
+          onCancel={() => !actionLoading && setApproveTarget(null)}
+          loading={actionLoading && actionId === approveTarget.id}
         />
       )}
       {rejectTarget && (
         <RejectModal
           product={rejectTarget}
           onConfirm={handleReject}
-          onCancel={() => setRejectTarget(null)}
-          loading={actionId === rejectTarget.id}
+          onCancel={() => !actionLoading && setRejectTarget(null)}
+          loading={actionLoading && actionId === rejectTarget.id}
         />
       )}
       {viewProduct && (
@@ -1081,7 +1417,7 @@ const AdminProducts = () => {
         />
       )}
 
-      {/* ── Page Header ────────────────────────────────────────── */}
+      {/* ── Page Header ─────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:justify-between">
         <div>
           <h1
@@ -1114,7 +1450,7 @@ const AdminProducts = () => {
         {[
           {
             label: "Pending Review",
-            value: statusFilter === "pending" ? pagination.total : "—",
+            value: counts.pending,
             color: "#F59E0B",
             bg: "rgba(245,158,11,0.07)",
             border: "rgba(245,158,11,0.15)",
@@ -1122,7 +1458,7 @@ const AdminProducts = () => {
           },
           {
             label: "Approved",
-            value: statusFilter === "approved" ? pagination.total : "—",
+            value: counts.approved,
             color: "#10B981",
             bg: "rgba(16,185,129,0.07)",
             border: "rgba(16,185,129,0.15)",
@@ -1130,7 +1466,7 @@ const AdminProducts = () => {
           },
           {
             label: "Rejected",
-            value: statusFilter === "rejected" ? pagination.total : "—",
+            value: counts.rejected,
             color: "#EF4444",
             bg: "rgba(239,68,68,0.07)",
             border: "rgba(239,68,68,0.15)",
@@ -1148,7 +1484,10 @@ const AdminProducts = () => {
           <div
             key={label}
             className="rounded-2xl p-4 flex items-start gap-3"
-            style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.05)" }}
+            style={{
+              background: "#0d0d14",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}
           >
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
@@ -1158,7 +1497,7 @@ const AdminProducts = () => {
             </div>
             <div>
               <p className="text-xl font-black mb-0.5" style={{ color }}>
-                {loading ? (
+                {value === null ? (
                   <span
                     className="inline-block h-6 w-8 rounded-lg animate-pulse"
                     style={{ background: "rgba(255,255,255,0.07)" }}
@@ -1177,7 +1516,6 @@ const AdminProducts = () => {
 
       {/* ── Search + Filters ─────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row gap-3">
-        {/* Search */}
         <div
           className="flex items-center gap-3 flex-1 rounded-2xl border px-4 py-3 transition-all focus-within:border-[#FF8C00]/40"
           style={{
@@ -1203,25 +1541,24 @@ const AdminProducts = () => {
           )}
         </div>
 
-        {/* Status filters */}
         <div className="flex gap-2 flex-wrap">
           <FilterPill
             label="Pending"
-            count={pendingCount}
+            count={counts.pending ?? undefined}
             active={statusFilter === "pending"}
             onClick={() => setStatusFilter("pending")}
             color="245,158,11"
           />
           <FilterPill
             label="Approved"
-            count={approvedCount}
+            count={counts.approved ?? undefined}
             active={statusFilter === "approved"}
             onClick={() => setStatusFilter("approved")}
             color="16,185,129"
           />
           <FilterPill
             label="Rejected"
-            count={rejectedCount}
+            count={counts.rejected ?? undefined}
             active={statusFilter === "rejected"}
             onClick={() => setStatusFilter("rejected")}
             color="239,68,68"
@@ -1290,10 +1627,12 @@ const AdminProducts = () => {
           />
         </>
       ) : (
-        /* Empty state */
         <div
           className="rounded-3xl p-16 text-center border"
-          style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.05)" }}
+          style={{
+            background: "#0d0d14",
+            border: "1px solid rgba(255,255,255,0.05)",
+          }}
         >
           {search ? (
             <>
