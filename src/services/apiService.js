@@ -53,6 +53,16 @@ class ApiService {
     return `Request failed with status ${statusCode}`;
   }
 
+  isRealUrl(url) {
+    return (
+      url &&
+      typeof url === "string" &&
+      url.startsWith("https://") &&
+      !url.includes("yourstore.com") &&
+      !url.includes("api.yourstore.com")
+    );
+  }
+
   async makeRequest(endpoint, options = {}) {
     if (!endpoint.startsWith("/")) endpoint = "/" + endpoint;
     const url = `${this.baseURL}${endpoint}`;
@@ -67,26 +77,36 @@ class ApiService {
     ];
     const isPublic = publicPrefixes.some((ep) => endpoint.startsWith(ep));
 
+    const isFormData = options.body instanceof FormData;
+
     const config = {
-      headers: { "Content-Type": "application/json", ...options.headers },
+      headers: { ...options.headers },
       ...options,
     };
+
+    if (!isFormData) {
+      config.headers["Content-Type"] = "application/json";
+    }
+
+    console.log(`🔐 Making request to: ${endpoint}`);
+    console.log(`📋 Is public: ${isPublic}`);
+    console.log(`📋 Is FormData: ${isFormData}`);
 
     if (!isPublic) {
       const token = this.getAccessToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-        console.log(
-          `✅ Adding token to ${endpoint}, token length: ${token.length}`,
-        );
+        console.log(`✅ Token added (length: ${token.length})`);
       } else {
         console.error(`❌ No token found for ${endpoint}`);
-        throw new Error("No authentication token found. Please log in again.");
       }
     }
 
-    console.log(`🌐 Making request to: ${url}`);
-    console.log(`📋 Headers:`, config.headers);
+    console.log(`🌐 Request URL: ${url}`);
+    console.log(`📋 Headers:`, {
+      ...config.headers,
+      Authorization: config.headers.Authorization ? "Bearer [HIDDEN]" : "none",
+    });
 
     try {
       const response = await fetch(url, config);
@@ -100,21 +120,30 @@ class ApiService {
 
       console.log(`📡 Response for ${endpoint}: status ${response.status}`);
 
+      if (response.status === 401) {
+        console.error("Authentication failed. Clearing tokens...");
+        this.clearTokens();
+
+        if (
+          typeof window !== "undefined" &&
+          !window.location.pathname.includes("/login")
+        ) {
+          window.location.href = "/login";
+        }
+
+        throw new Error(
+          data?.detail?.message ||
+            data?.detail ||
+            data?.message ||
+            "Your session has expired. Please log in again."
+        );
+      }
+
       if (!response.ok) {
         console.error(
           `Admin API Error [${response.status}] ${endpoint}:`,
-          data,
+          data
         );
-
-        if (response.status === 401) {
-          const serverMessage = this.extractErrorMessage(data, 401);
-          throw new Error(
-            serverMessage && serverMessage !== "Request failed with status 401"
-              ? serverMessage
-              : "Access denied. You may not have permission for this action, or your session has expired. Try logging out and back in.",
-          );
-        }
-
         throw new Error(this.extractErrorMessage(data, response.status));
       }
 
@@ -127,7 +156,7 @@ class ApiService {
     }
   }
 
-  // ── AUTH ──────────────────────────────────────────────────────────────────
+  // ─── AUTH ──────────────────────────────────────────────────────────────────
 
   async createAdmin({
     firstName,
@@ -165,6 +194,9 @@ class ApiService {
     if (accessToken) {
       this.storeTokens(accessToken, null);
       console.log("✅ Access token stored successfully");
+      if (tokens.user) {
+        localStorage.setItem("admin_user", JSON.stringify(tokens.user));
+      }
     } else {
       console.error("❌ No access token in login response:", response);
     }
@@ -175,18 +207,18 @@ class ApiService {
   async sendForgotPasswordCode(email) {
     return this.makeRequest(
       `/admin/auth/send-forgotten-password-code?email=${encodeURIComponent(email)}`,
-      { method: "POST" },
+      { method: "POST" }
     );
   }
 
   async resetPasswordWithCode(email, code, newPassword, confirmPassword) {
     return this.makeRequest(
       `/admin/auth/reset-password-with-code?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&new_password=${encodeURIComponent(newPassword)}&confirm_password=${encodeURIComponent(confirmPassword)}`,
-      { method: "POST" },
+      { method: "POST" }
     );
   }
 
-  // ── ADMIN PROFILE ──────────────────────────────────────────────────────────
+  // ─── ADMIN PROFILE ──────────────────────────────────────────────────────────
 
   async getAdminProfile() {
     return this.makeRequest("/admin/auth/profile", { method: "GET" });
@@ -199,7 +231,7 @@ class ApiService {
     });
   }
 
-  // ── ACTIVITY LOGS ──────────────────────────────────────────────────────────
+  // ─── ACTIVITY LOGS ──────────────────────────────────────────────────────────
 
   async getActivityLogs({
     page = 1,
@@ -219,7 +251,7 @@ class ApiService {
     });
   }
 
-  // ── SELLERS ───────────────────────────────────────────────────────────────
+  // ─── SELLERS ───────────────────────────────────────────────────────────────
 
   async getPendingSellers() {
     return this.makeRequest("/admin/seller/pending", { method: "GET" });
@@ -246,7 +278,7 @@ class ApiService {
     });
   }
 
-  // ── ADMIN INVITATIONS ──────────────────────────────────────────────────────
+  // ─── ADMIN INVITATIONS ──────────────────────────────────────────────────────
 
   async inviteAdmin({ email, adminType, schoolId = null }) {
     const body = {
@@ -297,18 +329,18 @@ class ApiService {
   async resendInvitation(invitationId) {
     return this.makeRequest(
       `/admin/invitation/resend-invitation/${invitationId}`,
-      { method: "POST" },
+      { method: "POST" }
     );
   }
 
   async revokeInvitation(invitationId) {
     return this.makeRequest(
       `/admin/invitation/revoke-invitation/${invitationId}`,
-      { method: "DELETE" },
+      { method: "DELETE" }
     );
   }
 
-  // ── DELIVERY OPTIONS ──────────────────────────────────────────────────────
+  // ─── DELIVERY OPTIONS ──────────────────────────────────────────────────────
 
   async createDeliveryOption(deliveryData) {
     return this.makeRequest("/admin/delivery/create-options", {
@@ -364,32 +396,32 @@ class ApiService {
   async getAvailableDeliveryOptions(cartTotal, totalWeight) {
     return this.makeRequest(
       `/admin/delivery/options/available?cart_total=${cartTotal}&total_weight=${totalWeight}`,
-      { method: "GET" },
+      { method: "GET" }
     );
   }
 
   async deactivateDeliveryOption(deliveryId) {
     return this.makeRequest(
       `/admin/delivery/options/${deliveryId}/deactivate`,
-      { method: "POST" },
+      { method: "POST" }
     );
   }
 
   async reactivateDeliveryOption(deliveryId) {
     return this.makeRequest(
       `/admin/delivery/options/${deliveryId}/reactivate`,
-      { method: "POST" },
+      { method: "POST" }
     );
   }
 
   async permanentlyDeleteDeliveryOption(deliveryId) {
     return this.makeRequest(
       `/admin/delivery/options/${deliveryId}/permanently-delete`,
-      { method: "DELETE" },
+      { method: "DELETE" }
     );
   }
 
-  // ── CATEGORY MANAGEMENT ───────────────────────────────────────────────────
+  // ─── CATEGORY MANAGEMENT ───────────────────────────────────────────────────
 
   async createCategory(data) {
     const payload = {
@@ -398,10 +430,10 @@ class ApiService {
       category_type: data.category_type,
       attribute_schema: data.attribute_schema || [],
     };
-    if (data.slug) payload.slug = data.slug;
-    if (data.category_image_url)
+    if (data.slug && data.slug.trim()) payload.slug = data.slug.trim();
+    if (this.isRealUrl(data.category_image_url))
       payload.category_image_url = data.category_image_url;
-    if (data.category_icon_url)
+    if (this.isRealUrl(data.category_icon_url))
       payload.category_icon_url = data.category_icon_url;
     if (data.category_metadata)
       payload.category_metadata = data.category_metadata;
@@ -415,7 +447,7 @@ class ApiService {
   async getAdminCategories(
     categoryType = null,
     includeInactive = false,
-    includeSubcategories = false,
+    includeSubcategories = false
   ) {
     const params = new URLSearchParams();
     if (categoryType) params.append("category_type", categoryType);
@@ -423,7 +455,7 @@ class ApiService {
     params.append("include_subcategories", includeSubcategories);
     return this.makeRequest(
       `/admin/category/get-all-categories?${params.toString()}`,
-      { method: "GET" },
+      { method: "GET" }
     );
   }
 
@@ -437,14 +469,37 @@ class ApiService {
     const payload = {
       name: data.name,
       description: data.description || "",
-      attribute_schema: data.attribute_schema || [],
+      attribute_schema:
+        data.attribute_schema && data.attribute_schema.length > 0
+          ? data.attribute_schema.map((attr) => ({
+              key: String(attr.key || ""),
+              label: String(attr.label || ""),
+              type: String(attr.type || "text"),
+              required: Boolean(attr.required),
+              options: ["select", "multiselect"].includes(attr.type)
+                ? (attr.options || []).filter(Boolean)
+                : [],
+            }))
+          : [],
     };
-    if (data.category_image_url !== undefined)
+
+    if (data.slug && data.slug.trim()) {
+      payload.slug = data.slug.trim();
+    }
+
+    // Only send real Cloudinary URLs — never placeholder yourstore.com URLs
+    if (this.isRealUrl(data.category_image_url)) {
       payload.category_image_url = data.category_image_url;
-    if (data.category_icon_url !== undefined)
+    }
+    if (this.isRealUrl(data.category_icon_url)) {
       payload.category_icon_url = data.category_icon_url;
-    if (data.category_metadata !== undefined)
+    }
+
+    if (data.category_metadata !== undefined && data.category_metadata !== null) {
       payload.category_metadata = data.category_metadata;
+    }
+
+    console.log("📦 Update category payload (final):", JSON.stringify(payload, null, 2));
 
     return this.makeRequest(`/admin/category/update-category/${categoryId}`, {
       method: "PUT",
@@ -455,14 +510,14 @@ class ApiService {
   async deactivateCategory(categoryId) {
     return this.makeRequest(
       `/admin/category/deactivate-category/${categoryId}`,
-      { method: "PATCH" },
+      { method: "PATCH" }
     );
   }
 
   async reactivateCategory(categoryId) {
     return this.makeRequest(
       `/admin/category/reactivate-category/${categoryId}`,
-      { method: "PATCH" },
+      { method: "PATCH" }
     );
   }
 
@@ -472,7 +527,7 @@ class ApiService {
     });
   }
 
-  // ── SUBCATEGORY MANAGEMENT ────────────────────────────────────────────────
+  // ─── SUBCATEGORY MANAGEMENT ────────────────────────────────────────────────
 
   async createSubcategory(data) {
     const payload = {
@@ -481,10 +536,10 @@ class ApiService {
       description: data.description || "",
       additional_attribute_schema: data.additional_attribute_schema || [],
     };
-    if (data.slug) payload.slug = data.slug;
-    if (data.category_image_url)
+    if (data.slug && data.slug.trim()) payload.slug = data.slug.trim();
+    if (this.isRealUrl(data.category_image_url))
       payload.category_image_url = data.category_image_url;
-    if (data.category_icon_url)
+    if (this.isRealUrl(data.category_icon_url))
       payload.category_icon_url = data.category_icon_url;
     if (data.category_metadata)
       payload.category_metadata = data.category_metadata;
@@ -498,7 +553,7 @@ class ApiService {
   async getAdminSubcategories(
     categoryId = null,
     includeInactive = false,
-    includeEffectiveSchema = false,
+    includeEffectiveSchema = false
   ) {
     const params = new URLSearchParams();
     if (categoryId) params.append("category_id", categoryId);
@@ -506,7 +561,7 @@ class ApiService {
     params.append("include_effective_schema", includeEffectiveSchema);
     return this.makeRequest(
       `/admin/category/subcategory/get-all-subcategories?${params.toString()}`,
-      { method: "GET" },
+      { method: "GET" }
     );
   }
 
@@ -515,7 +570,7 @@ class ApiService {
     params.append("include_effective_schema", includeEffectiveSchema);
     return this.makeRequest(
       `/admin/category/subcategory/get-subcategory/${subcategoryId}?${params.toString()}`,
-      { method: "GET" },
+      { method: "GET" }
     );
   }
 
@@ -523,43 +578,58 @@ class ApiService {
     const payload = {
       name: data.name,
       description: data.description || "",
-      additional_attribute_schema: data.additional_attribute_schema || [],
+      additional_attribute_schema:
+        data.additional_attribute_schema && data.additional_attribute_schema.length > 0
+          ? data.additional_attribute_schema.map((attr) => ({
+              key: String(attr.key || ""),
+              label: String(attr.label || ""),
+              type: String(attr.type || "text"),
+              required: Boolean(attr.required),
+              options: ["select", "multiselect"].includes(attr.type)
+                ? (attr.options || []).filter(Boolean)
+                : [],
+            }))
+          : [],
     };
-    if (data.category_image_url !== undefined)
+
+    if (this.isRealUrl(data.category_image_url)) {
       payload.category_image_url = data.category_image_url;
-    if (data.category_icon_url !== undefined)
+    }
+    if (this.isRealUrl(data.category_icon_url)) {
       payload.category_icon_url = data.category_icon_url;
-    if (data.category_metadata !== undefined)
+    }
+    if (data.category_metadata !== undefined && data.category_metadata !== null) {
       payload.category_metadata = data.category_metadata;
+    }
 
     return this.makeRequest(
       `/admin/category/subcategory/update-subcategory/${subcategoryId}`,
-      { method: "PUT", body: JSON.stringify(payload) },
+      { method: "PUT", body: JSON.stringify(payload) }
     );
   }
 
   async deactivateSubcategory(subcategoryId) {
     return this.makeRequest(
       `/admin/category/subcategory/deactivate-subcategory/${subcategoryId}`,
-      { method: "PATCH" },
+      { method: "PATCH" }
     );
   }
 
   async reactivateSubcategory(subcategoryId) {
     return this.makeRequest(
       `/admin/category/subcategory/reactivate-subcategory/${subcategoryId}`,
-      { method: "PATCH" },
+      { method: "PATCH" }
     );
   }
 
   async deleteSubcategory(subcategoryId) {
     return this.makeRequest(
       `/admin/category/subcategory/delete-subcategory/${subcategoryId}`,
-      { method: "DELETE" },
+      { method: "DELETE" }
     );
   }
 
-  // ── SCHOOLS ───────────────────────────────────────────────────────────────
+  // ─── SCHOOLS ───────────────────────────────────────────────────────────────
 
   async createSchool({
     schoolName,
@@ -604,7 +674,7 @@ class ApiService {
       schoolEmail,
       schoolWebsite,
       schoolLogoUrl,
-    },
+    }
   ) {
     return this.makeRequest(`/admin/school/update-school/${schoolId}`, {
       method: "PUT",
@@ -644,7 +714,7 @@ class ApiService {
     });
   }
 
-  // ── CAMPUS GUIDE MANAGEMENT ───────────────────────────────────────────────
+  // ─── CAMPUS GUIDE MANAGEMENT ───────────────────────────────────────────────
 
   async createCampusGuide(data) {
     return this.makeRequest("/admin/campus-guide/create", {
@@ -665,7 +735,7 @@ class ApiService {
     const query = qs.toString();
     return this.makeRequest(
       `/admin/campus-guide/all${query ? `?${query}` : ""}`,
-      { method: "GET" },
+      { method: "GET" }
     );
   }
 
@@ -713,7 +783,7 @@ class ApiService {
     const query = qs.toString();
     return this.makeRequest(
       `/admin/campus-guide/reviews/all${query ? `?${query}` : ""}`,
-      { method: "GET" },
+      { method: "GET" }
     );
   }
 
@@ -742,12 +812,8 @@ class ApiService {
     });
   }
 
-  // ── PICKUP STATIONS ───────────────────────────────────────────────────────
+  // ─── PICKUP STATIONS ───────────────────────────────────────────────────────
 
-  /**
-   * Create a new pickup station for a specific school.
-   * POST /admin/pickup-station/create/{school_id}
-   */
   async createPickupStation(schoolId, data) {
     return this.makeRequest(`/admin/pickup-station/create/${schoolId}`, {
       method: "POST",
@@ -761,10 +827,6 @@ class ApiService {
     });
   }
 
-  /**
-   * Update an existing pickup station.
-   * PUT /admin/pickup-station/update/{station_id}
-   */
   async updatePickupStation(stationId, data) {
     return this.makeRequest(`/admin/pickup-station/update/${stationId}`, {
       method: "PUT",
@@ -778,23 +840,14 @@ class ApiService {
     });
   }
 
-  /**
-   * Permanently delete a pickup station.
-   * DELETE /admin/pickup-station/delete/{station_id}
-   */
   async deletePickupStation(stationId) {
     return this.makeRequest(`/admin/pickup-station/delete/${stationId}`, {
       method: "DELETE",
     });
   }
 
-  /**
-   * Get all pickup stations for a school with optional filters.
-   * GET /admin/pickup-station/get-all/{school_id}
-   */
   async getAllPickupStations(schoolId, params = {}) {
     const qs = new URLSearchParams();
-    // Only append is_active if explicitly set (not null/undefined)
     if (
       params.is_active !== undefined &&
       params.is_active !== null &&
@@ -810,21 +863,17 @@ class ApiService {
     const query = qs.toString();
     return this.makeRequest(
       `/admin/pickup-station/get-all/${schoolId}${query ? `?${query}` : ""}`,
-      { method: "GET" },
+      { method: "GET" }
     );
   }
 
-  /**
-   * Get a single pickup station by its ID.
-   * GET /admin/pickup-station/get/{station_id}
-   */
   async getPickupStationById(stationId) {
     return this.makeRequest(`/admin/pickup-station/get/${stationId}`, {
       method: "GET",
     });
   }
 
-  // ── PRODUCT MANAGEMENT ────────────────────────────────────────
+  // ─── PRODUCT MANAGEMENT ────────────────────────────────────────────────────
 
   async getPendingProducts({ page = 1, page_size = 20 } = {}) {
     const params = new URLSearchParams();
@@ -835,7 +884,11 @@ class ApiService {
     });
   }
 
-  async getAllProducts({ status_filter = null, page = 1, page_size = 20 } = {}) {
+  async getAllProducts({
+    status_filter = null,
+    page = 1,
+    page_size = 20,
+  } = {}) {
     const params = new URLSearchParams();
     params.append("page", page);
     params.append("page_size", page_size);
@@ -862,30 +915,86 @@ class ApiService {
     });
   }
 
-  // ── REVENUE MANAGEMENT ──────────────────────────────────────────────────────────
+  // ─── REVENUE MANAGEMENT ────────────────────────────────────────────────────
 
-// GET /api/v1/admin/revenue/summary - Get platform revenue summary
-async getRevenueSummary() {
-  return this.makeRequest("/admin/revenue/summary", {
-    method: "GET",
-  });
-}
+  async getRevenueSummary() {
+    return this.makeRequest("/admin/revenue/summary", { method: "GET" });
+  }
 
-// GET /api/v1/admin/revenue - List platform revenue records
-async getRevenueRecords(params = {}) {
-  const queryParams = new URLSearchParams();
-  if (params.status) queryParams.append("status", params.status);
-  if (params.skip !== undefined) queryParams.append("skip", params.skip);
-  if (params.limit) queryParams.append("limit", params.limit);
-  
-  const queryString = queryParams.toString();
-  return this.makeRequest(`/admin/revenue${queryString ? `?${queryString}` : ""}`, {
-    method: "GET",
-  });
-}
+  async getRevenueRecords(params = {}) {
+    const queryParams = new URLSearchParams();
+    if (params.status) queryParams.append("status", params.status);
+    if (params.skip !== undefined) queryParams.append("skip", params.skip);
+    if (params.limit) queryParams.append("limit", params.limit);
+
+    const queryString = queryParams.toString();
+    return this.makeRequest(
+      `/admin/revenue${queryString ? `?${queryString}` : ""}`,
+      { method: "GET" }
+    );
+  }
+
+  // ─── FILE UPLOADS ──────────────────────────────────────────────────────────
+
+  async uploadFiles(files, uploadType, entityId = null) {
+    const formData = new FormData();
+
+    files.forEach((file) => {
+      formData.append("files", file);
+    });
+
+    formData.append("upload_type", uploadType);
+
+    if (entityId) {
+      formData.append("entity_id", entityId);
+    }
+
+    console.log(`📤 Uploading ${files.length} file(s) as ${uploadType}`);
+    console.log(`🔑 Entity ID: ${entityId || "none"}`);
+
+    const response = await this.makeRequest("/upload/files", {
+      method: "POST",
+      body: formData,
+    });
+
+    return response?.data || response;
+  }
+
+  async uploadCategoryImage(file, categoryId) {
+    return this.uploadFiles([file], "category_image", categoryId);
+  }
+
+  async uploadCategoryIcon(file, categoryId) {
+    return this.uploadFiles([file], "category_icon", categoryId);
+  }
+
+  async uploadSchoolLogo(file, schoolId) {
+    return this.uploadFiles([file], "school_logo", schoolId);
+  }
+
+  async uploadCampusGuideImage(file, campusGuideId) {
+    return this.uploadFiles([file], "campus_guide_image", campusGuideId);
+  }
+
+  async uploadSellerDocuments(files, sellerId = null) {
+    return this.uploadFiles(files, "seller_document", sellerId);
+  }
+
+  async uploadProviderLogo(file, providerId = null) {
+    return this.uploadFiles([file], "provider_logo", providerId);
+  }
+
+  async uploadProviderCover(file, providerId = null) {
+    return this.uploadFiles([file], "provider_cover", providerId);
+  }
+
+  // ─── LOGOUT ────────────────────────────────────────────────────────────────
 
   async logout() {
     this.clearTokens();
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
   }
 }
 

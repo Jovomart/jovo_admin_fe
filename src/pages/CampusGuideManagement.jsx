@@ -1,6 +1,6 @@
 // src/pages/CampusGuideManagement.jsx
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import ApiService from "../services/apiService";
 import {
   FiPlus,
@@ -20,6 +20,8 @@ import {
   FiChevronRight,
   FiLoader,
   FiStar,
+  FiUpload,
+  FiImage,
 } from "react-icons/fi";
 import { MdLocationOn } from "react-icons/md";
 
@@ -68,7 +70,7 @@ const EMPTY_FORM = {
   facilities: [],
   directions: "",
   landmarks: "",
-  image_url: "",
+  image: "",  // Changed from image_url to image
   pro_tip: "",
   google_maps_link: "",
   is_active: true,
@@ -146,6 +148,166 @@ const extractSchoolsArray = (response) => {
   }
   
   return [];
+};
+
+/* ─────────────────────────────────────────────────────────────
+   IMAGE UPLOAD COMPONENT
+───────────────────────────────────────────────────────────── */
+const ImageUploader = ({ currentImageUrl, onImageUploaded, label }) => {
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState(currentImageUrl || "");
+  const [error, setError] = useState("");
+  const fileInputRef = useRef(null);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError("");
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError("Please select an image file (JPEG, PNG, WebP)");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("File size exceeds 5MB limit. Please choose a smaller image.");
+      return;
+    }
+
+    // Show preview immediately
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 10, 90));
+      }, 200);
+
+      // Upload using campus_guide_image type
+      const result = await ApiService.uploadFiles([file], "campus_guide_image");
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      const uploadedUrl = result.primary_url || result.urls?.[0];
+      if (uploadedUrl) {
+        setPreviewUrl(uploadedUrl);
+        onImageUploaded(uploadedUrl);
+        console.log("Image uploaded successfully:", uploadedUrl);
+      } else {
+        throw new Error("No URL returned from upload");
+      }
+    } catch (error) {
+      console.error("Upload failed:", error);
+      let errorMessage = error.message || "Failed to upload image. Please try again.";
+      
+      if (errorMessage.includes("401") || errorMessage.includes("authentication") || errorMessage.includes("token")) {
+        errorMessage = "Your session has expired. Please refresh the page and log in again.";
+      }
+      
+      setError(errorMessage);
+      setPreviewUrl(currentImageUrl || "");
+    } finally {
+      setTimeout(() => {
+        setUploading(false);
+        setUploadProgress(0);
+      }, 500);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setPreviewUrl("");
+    onImageUploaded("");
+    setError("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
+        {label || "Location Image"}
+      </label>
+      
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2 bg-red-500/10 border border-red-500/20">
+          <FiAlertCircle size={12} className="text-red-400 shrink-0" />
+          <p className="text-red-400 text-xs">{error}</p>
+        </div>
+      )}
+      
+      {uploading && (
+        <div className="mb-3">
+          <div className="flex items-center justify-between text-xs text-white/50 mb-1">
+            <span className="flex items-center gap-2">
+              <FiLoader size={14} className="animate-spin" />
+              Uploading image...
+            </span>
+            <span>{uploadProgress}%</span>
+          </div>
+          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div 
+              className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%`, background: "linear-gradient(90deg, #B42225, #FF8C00)" }}
+            />
+          </div>
+        </div>
+      )}
+      
+      <div className="flex items-center gap-4">
+        {/* Image Preview */}
+        {previewUrl ? (
+          <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-white/5 border border-white/10 shrink-0">
+            <img 
+              src={previewUrl} 
+              alt="Location preview" 
+              className="w-full h-full object-cover"
+            />
+            <button
+              type="button"
+              onClick={handleRemoveImage}
+              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition"
+            >
+              <FiX size={10} />
+            </button>
+          </div>
+        ) : (
+          <div className="w-20 h-20 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+            <FiImage size={24} className="text-white/20" />
+          </div>
+        )}
+        
+        {/* Upload Button */}
+        <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed transition-all cursor-pointer ${
+          uploading ? "border-white/10 bg-white/5 opacity-50" : "border-white/15 bg-white/5 hover:border-[#FF8C00]/50 hover:bg-[#FF8C00]/5"
+        }`}>
+          <FiUpload size={16} className="text-white/40" />
+          <span className="text-sm font-medium text-white/60">
+            {uploading ? "Uploading..." : previewUrl ? "Change Image" : "Click to Upload Image"}
+          </span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleFileSelect}
+            disabled={uploading}
+          />
+        </label>
+      </div>
+      
+      <p className="text-[10px] text-white/25">
+        JPEG, PNG, WebP up to 5MB. Recommended size: 1200x800px.
+      </p>
+    </div>
+  );
 };
 
 /* ─────────────────────────────────────────────────────────────
@@ -246,7 +408,7 @@ const FormModal = ({ initial, onClose, onSave, saving, schools }) => {
       facilities: normalizeFacilities(initial.facilities),
       directions: initial.directions || "",
       landmarks: initial.landmarks || "",
-      image_url: initial.image_url || initial.imageUrl || initial.image || "",
+      image: initial.image || initial.image_url || initial.imageUrl || "",  // Support both
       pro_tip: initial.pro_tip || initial.proTip || initial.tips || "",
       google_maps_link: initial.google_maps_link || initial.googleMapsLink || "",
       is_active: initial.is_active !== undefined ? initial.is_active : true,
@@ -263,6 +425,10 @@ const FormModal = ({ initial, onClose, onSave, saving, schools }) => {
   const setField = (k, v) => {
     setForm((p) => ({ ...p, [k]: v }));
     setErrors((p) => ({ ...p, [k]: "" }));
+  };
+
+  const handleImageUploaded = (url) => {
+    setField("image", url);
   };
 
   const validate = () => {
@@ -326,6 +492,13 @@ const FormModal = ({ initial, onClose, onSave, saving, schools }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5">
+          {/* Image Upload Section */}
+          <ImageUploader
+            currentImageUrl={form.image}
+            onImageUploaded={handleImageUploaded}
+            label="Location Image"
+          />
+
           {/* Basic Info Section */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -489,41 +662,18 @@ const FormModal = ({ initial, onClose, onSave, saving, schools }) => {
             onChange={(val) => setField("facilities", val)}
           />
 
-          {/* Images & Links */}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
-                Image URL
-              </label>
-              <input
-                type="text"
-                value={form.image_url}
-                onChange={(e) => setField("image_url", e.target.value)}
-                placeholder="https://example.com/image.jpg"
-                className={inputCls()}
-              />
-              {form.image_url && (
-                <img
-                  src={form.image_url}
-                  alt="Preview"
-                  className="mt-2 w-20 h-20 object-cover rounded-lg border border-white/10"
-                  onError={(e) => (e.target.style.display = "none")}
-                />
-              )}
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
-                Google Maps Link
-              </label>
-              <input
-                type="text"
-                value={form.google_maps_link}
-                onChange={(e) => setField("google_maps_link", e.target.value)}
-                placeholder="https://maps.google.com/..."
-                className={inputCls()}
-              />
-            </div>
+          {/* Additional Links */}
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
+              Google Maps Link (Optional)
+            </label>
+            <input
+              type="text"
+              value={form.google_maps_link}
+              onChange={(e) => setField("google_maps_link", e.target.value)}
+              placeholder="https://maps.google.com/..."
+              className={inputCls()}
+            />
           </div>
 
           {/* Pro Tip */}
@@ -1034,59 +1184,58 @@ const CampusGuideManagement = () => {
   }, [fetchSchools, fetchLocations]);
 
   const handleSave = async (formData, editId) => {
-  setSaving(true);
-  try {
-    // Convert facilities array to array of objects for backend
-    // Backend expects: [{ "facility_name": true }, { "another_facility": true }]
-    const facilitiesArray = formData.facilities || [];
-    const facilitiesAsObjects = facilitiesArray.map(facility => ({
-      [facility.toLowerCase().replace(/\s+/g, "_")]: true
-    }));
-    
-    const payload = {
-      category: formData.category,
-      name: formData.name,
-      location: formData.location,
-      walk_time: formData.walk_time,
-      opening_hours: formData.opening_hours || "",
-      about: formData.about,
-      facilities: facilitiesAsObjects,
-      directions: formData.directions || "",
-      landmarks: formData.landmarks || "",
-      image_url: formData.image_url || "",
-      pro_tip: formData.pro_tip || "",
-      google_maps_link: formData.google_maps_link || "",
-      is_active: formData.is_active,
-      must_know_location: formData.must_know_location,
-    };
+    setSaving(true);
+    try {
+      // Convert facilities array to array of objects for backend
+      const facilitiesArray = formData.facilities || [];
+      const facilitiesAsObjects = facilitiesArray.map(facility => ({
+        [facility.toLowerCase().replace(/\s+/g, "_")]: true
+      }));
+      
+      const payload = {
+        category: formData.category,
+        name: formData.name,
+        location: formData.location,
+        walk_time: formData.walk_time,
+        opening_hours: formData.opening_hours || "",
+        about: formData.about,
+        facilities: facilitiesAsObjects,
+        directions: formData.directions || "",
+        landmarks: formData.landmarks || "",
+        image: formData.image,  // Changed from image_url to image
+        pro_tip: formData.pro_tip || "",
+        google_maps_link: formData.google_maps_link || "",
+        is_active: formData.is_active,
+        must_know_location: formData.must_know_location,
+      };
 
-    // Only include school_id when creating (not when editing)
-    if (!editId) {
-      payload.school_id = formData.school_id;
-    }
+      // Only include school_id when creating (not when editing)
+      if (!editId) {
+        payload.school_id = formData.school_id;
+      }
 
-    if (editId) {
-      await ApiService.makeRequest(`/admin/campus-guide/${editId}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      });
-      showToast("Location updated successfully!");
-    } else {
-      await ApiService.makeRequest("/admin/campus-guide/create", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      showToast("Location created successfully!");
+      if (editId) {
+        await ApiService.makeRequest(`/admin/campus-guide/${editId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        showToast("Location updated successfully!");
+      } else {
+        await ApiService.makeRequest("/admin/campus-guide/create", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        showToast("Location created successfully!");
+      }
+      setModal(null);
+      await fetchLocations();
+    } catch (err) {
+      console.error("handleSave error:", err);
+      showToast(err.message || "Failed to save.", "error");
+    } finally {
+      setSaving(false);
     }
-    setModal(null);
-    await fetchLocations();
-  } catch (err) {
-    console.error("handleSave error:", err);
-    showToast(err.message || "Failed to save.", "error");
-  } finally {
-    setSaving(false);
-  }
-    };
+  };
     
   const handleToggle = async (loc) => {
     setActionId(loc.id);

@@ -1,16 +1,22 @@
 // src/pages/Categories.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import ApiService from "../services/apiService";
 import {
   FiPlus, FiEdit2, FiTrash2, FiX, FiCheck,
   FiAlertCircle, FiRefreshCw, FiGrid, FiSearch,
   FiToggleLeft, FiToggleRight, FiChevronDown,
   FiChevronRight, FiPlusCircle, FiMinusCircle,
-  FiImage, FiLink, FiLayers, FiTag,
+  FiImage, FiLink, FiLayers, FiTag, FiUpload, FiLoader,
 } from "react-icons/fi";
 import { MdOutlineCategory } from "react-icons/md";
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
+
+const isRealUrl = (url) =>
+  url &&
+  typeof url === "string" &&
+  url.startsWith("https://") &&
+  !url.includes("yourstore.com");
 
 const inputCls = (err) =>
   `w-full rounded-xl border px-4 py-2.5 text-sm text-white outline-none transition-all placeholder-white/20 ${
@@ -59,6 +65,236 @@ const Toast = ({ toast }) => {
     >
       {toast.type === "error" ? <FiAlertCircle size={15} className="shrink-0" /> : <FiCheck size={15} className="shrink-0" />}
       <span className="line-clamp-2">{toast.msg}</span>
+    </div>
+  );
+};
+
+// ─── Category Icon Component with Fallback ────────────────────────────────────
+const CategoryIcon = ({ url, name, fallbackIcon, size = "md", className = "" }) => {
+  const [hasError, setHasError] = useState(false);
+
+  const sizeClasses = {
+    sm: "w-6 h-6 rounded-lg",
+    md: "w-10 h-10 rounded-xl",
+    lg: "w-16 h-16 rounded-2xl",
+  };
+
+  const sizeClass = sizeClasses[size] || sizeClasses.md;
+
+  if (!isRealUrl(url) || hasError) {
+    return (
+      <div className={`${sizeClass} flex items-center justify-center shrink-0 ${className}`}
+        style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}>
+        {fallbackIcon || <MdOutlineCategory size={size === "sm" ? 14 : 20} className="text-white" />}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${sizeClass} overflow-hidden shrink-0 ${className}`}>
+      <img
+        src={url}
+        alt={name || "Category"}
+        className="w-full h-full object-cover"
+        onError={() => setHasError(true)}
+      />
+    </div>
+  );
+};
+
+// ─── Subcategory Icon Component with Fallback ─────────────────────────────────
+const SubcategoryIcon = ({ url, name, fallbackIcon, size = "sm", className = "" }) => {
+  const [hasError, setHasError] = useState(false);
+
+  const sizeClasses = {
+    sm: "w-6 h-6 rounded-lg",
+    md: "w-8 h-8 rounded-xl",
+    lg: "w-12 h-12 rounded-2xl",
+  };
+
+  const sizeClass = sizeClasses[size] || sizeClasses.sm;
+
+  if (!isRealUrl(url) || hasError) {
+    return (
+      <div className={`${sizeClass} flex items-center justify-center shrink-0 ${className}`}
+        style={{ background: "linear-gradient(135deg,#6366F1,#8B5CF6)" }}>
+        {fallbackIcon || <FiLayers size={size === "sm" ? 11 : 16} className="text-white" />}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${sizeClass} overflow-hidden shrink-0 ${className}`}>
+      <img
+        src={url}
+        alt={name || "Subcategory"}
+        className="w-full h-full object-cover"
+        onError={() => setHasError(true)}
+      />
+    </div>
+  );
+};
+
+// ─── Image Upload Component ────────────────────────────────────────────────────
+const ImageUploader = ({ currentImageUrl, onImageUploaded, label, type }) => {
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState(isRealUrl(currentImageUrl) ? currentImageUrl : "");
+  const [error, setError] = useState("");
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    setPreviewUrl(isRealUrl(currentImageUrl) ? currentImageUrl : "");
+  }, [currentImageUrl]);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError("");
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file (JPEG, PNG, WebP, SVG)");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("File size exceeds 5MB limit. Please choose a smaller image.");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => Math.min(prev + 10, 90));
+      }, 200);
+
+      const uploadType = type === "icon" ? "category_icon" : "category_image";
+      const result = await ApiService.uploadFiles([file], uploadType);
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      const uploadedUrl = result.primary_url || result.urls?.[0];
+      if (uploadedUrl) {
+        URL.revokeObjectURL(objectUrl);
+        setPreviewUrl(uploadedUrl);
+        onImageUploaded(uploadedUrl);
+      } else {
+        throw new Error("No URL returned from upload");
+      }
+    } catch (error) {
+      console.error("Upload failed:", error);
+      let errorMessage = error.message || "Failed to upload image. Please try again.";
+
+      if (
+        errorMessage.includes("401") ||
+        errorMessage.includes("authentication") ||
+        errorMessage.includes("token")
+      ) {
+        errorMessage = "Your session has expired. Please refresh the page and log in again.";
+      }
+
+      setError(errorMessage);
+      setPreviewUrl(isRealUrl(currentImageUrl) ? currentImageUrl : "");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } finally {
+      setTimeout(() => {
+        setUploading(false);
+        setUploadProgress(0);
+      }, 500);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setPreviewUrl("");
+    onImageUploaded("");
+    setError("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className={labelCls + " mb-1"}>{label}</label>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2 bg-red-500/10 border border-red-500/20">
+          <FiAlertCircle size={12} className="text-red-400 shrink-0" />
+          <p className="text-red-400 text-xs">{error}</p>
+        </div>
+      )}
+
+      {uploading && (
+        <div className="mb-3">
+          <div className="flex items-center justify-between text-xs text-white/50 mb-1">
+            <span className="flex items-center gap-2">
+              <FiLoader size={14} className="animate-spin" />
+              Uploading...
+            </span>
+            <span>{uploadProgress}%</span>
+          </div>
+          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%`, background: "linear-gradient(90deg, #B42225, #FF8C00)" }}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-4">
+        {previewUrl ? (
+          <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-white/5 border border-white/10 shrink-0">
+            <img
+              src={previewUrl}
+              alt={label}
+              className="w-full h-full object-cover"
+            />
+            <button
+              type="button"
+              onClick={handleRemoveImage}
+              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition"
+            >
+              <FiX size={10} />
+            </button>
+          </div>
+        ) : (
+          <div className="w-16 h-16 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+            <FiImage size={24} className="text-white/20" />
+          </div>
+        )}
+
+        <label className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed transition-all cursor-pointer ${
+          uploading
+            ? "border-white/10 bg-white/5 opacity-50"
+            : "border-white/15 bg-white/5 hover:border-[#FF8C00]/50 hover:bg-[#FF8C00]/5"
+        }`}>
+          <FiUpload size={16} className="text-white/40" />
+          <span className="text-sm font-medium text-white/60">
+            {uploading ? "Uploading..." : previewUrl ? "Change Image" : "Click to Upload"}
+          </span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/svg+xml"
+            className="hidden"
+            onChange={handleFileSelect}
+            disabled={uploading}
+          />
+        </label>
+      </div>
+
+      <p className="text-[9px] text-white/25">
+        JPEG, PNG, WebP or SVG up to 5MB. Recommended: 200x200px for icons, 400x400px for images.
+      </p>
     </div>
   );
 };
@@ -167,27 +403,6 @@ const AttributeBuilder = ({ schema, onChange, errors, label = "Attribute Schema"
   );
 };
 
-// ─── Image & URL fields section ────────────────────────────────────────────────
-const MediaFields = ({ form, set }) => (
-  <div className="space-y-3">
-    <label className={labelCls}>Media & URLs <span className="text-white/20 normal-case tracking-normal font-normal">(optional)</span></label>
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div>
-        <label className={labelCls + " mb-1"}><FiImage size={10} className="inline mr-1" />Image URL</label>
-        <input type="url" placeholder="https://..." value={form.category_image_url || ""}
-          onChange={(e) => set("category_image_url", e.target.value)}
-          className={inputCls()} />
-      </div>
-      <div>
-        <label className={labelCls + " mb-1"}><FiTag size={10} className="inline mr-1" />Icon URL</label>
-        <input type="url" placeholder="https://..." value={form.category_icon_url || ""}
-          onChange={(e) => set("category_icon_url", e.target.value)}
-          className={inputCls()} />
-      </div>
-    </div>
-  </div>
-);
-
 // ─── Category Modal (Create / Edit) ───────────────────────────────────────────
 const CategoryModal = ({ category, onClose, onSave, saving }) => {
   const isEdit = !!category?.id;
@@ -197,8 +412,9 @@ const CategoryModal = ({ category, onClose, onSave, saving }) => {
     description: category?.description || "",
     category_type: category?.category_type || "PRODUCT",
     attribute_schema: category?.attribute_schema || [],
-    category_image_url: category?.category_image_url || "",
-    category_icon_url: category?.category_icon_url || "",
+    // Sanitize URLs on init — placeholder URLs from seeded data are stripped here
+    category_image_url: isRealUrl(category?.category_image_url) ? category.category_image_url : "",
+    category_icon_url: isRealUrl(category?.category_icon_url) ? category.category_icon_url : "",
   });
   const [errors, setErrors] = useState({});
 
@@ -220,7 +436,27 @@ const CategoryModal = ({ category, onClose, onSave, saving }) => {
   const handleSubmit = async (e) => {
     e?.preventDefault();
     if (!validate()) return;
-    onSave(form, isEdit ? category.id : null);
+
+    const cleanedForm = {
+      name: form.name,
+      description: form.description || "",
+      category_type: form.category_type,
+      slug: form.slug && form.slug.trim() ? form.slug.trim() : undefined,
+      // Only pass real URLs — never pass placeholder or empty strings
+      category_image_url: isRealUrl(form.category_image_url) ? form.category_image_url : undefined,
+      category_icon_url: isRealUrl(form.category_icon_url) ? form.category_icon_url : undefined,
+      attribute_schema: form.attribute_schema.map((attr) => ({
+        key: String(attr.key || ""),
+        label: String(attr.label || ""),
+        type: String(attr.type || "text"),
+        required: Boolean(attr.required),
+        options: ["select", "multiselect"].includes(attr.type)
+          ? (attr.options || []).filter(Boolean)
+          : [],
+      })),
+    };
+
+    onSave(cleanedForm, isEdit ? category.id : null);
   };
 
   return (
@@ -233,7 +469,6 @@ const CategoryModal = ({ category, onClose, onSave, saving }) => {
           boxShadow: "0 30px 80px rgba(0,0,0,0.7)",
           maxHeight: "92dvh",
         }}>
-        {/* Header */}
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 sm:py-5 border-b shrink-0"
           style={{ borderColor: "rgba(255,255,255,0.06)" }}>
           <div className="flex items-center gap-3">
@@ -251,7 +486,6 @@ const CategoryModal = ({ category, onClose, onSave, saving }) => {
           </button>
         </div>
 
-        {/* Form body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-5">
           {errors.general && (
             <div className="flex items-start gap-2 rounded-xl px-4 py-3 bg-red-500/10 border border-red-500/20">
@@ -260,7 +494,6 @@ const CategoryModal = ({ category, onClose, onSave, saving }) => {
             </div>
           )}
 
-          {/* Name & Slug */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Category Name *</label>
@@ -278,7 +511,6 @@ const CategoryModal = ({ category, onClose, onSave, saving }) => {
             </div>
           </div>
 
-          {/* Type selector — only show on create */}
           {!isEdit && (
             <div>
               <label className={labelCls}>Category Type *</label>
@@ -301,7 +533,6 @@ const CategoryModal = ({ category, onClose, onSave, saving }) => {
             </div>
           )}
 
-          {/* Description */}
           <div>
             <label className={labelCls}>Description</label>
             <textarea rows={3} placeholder="Brief description of this category..."
@@ -309,10 +540,21 @@ const CategoryModal = ({ category, onClose, onSave, saving }) => {
               className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none resize-none placeholder-white/20 transition-all" />
           </div>
 
-          {/* Media fields */}
-          <MediaFields form={form} set={set} />
+          <div className="space-y-4">
+            <ImageUploader
+              currentImageUrl={form.category_image_url}
+              onImageUploaded={(url) => set("category_image_url", url)}
+              label="Category Image"
+              type="image"
+            />
+            <ImageUploader
+              currentImageUrl={form.category_icon_url}
+              onImageUploaded={(url) => set("category_icon_url", url)}
+              label="Category Icon"
+              type="icon"
+            />
+          </div>
 
-          {/* Attribute schema */}
           <AttributeBuilder
             schema={form.attribute_schema}
             onChange={(s) => set("attribute_schema", s)}
@@ -322,7 +564,6 @@ const CategoryModal = ({ category, onClose, onSave, saving }) => {
           {errors.attribute_schema && <p className="text-xs text-red-400">{errors.attribute_schema}</p>}
         </form>
 
-        {/* Footer */}
         <div className="flex gap-3 px-5 sm:px-6 py-4 border-t shrink-0"
           style={{ borderColor: "rgba(255,255,255,0.06)" }}>
           <button type="button" onClick={onClose}
@@ -351,8 +592,9 @@ const SubcategoryModal = ({ subcategory, parentCategories, defaultParentId, onCl
     description: subcategory?.description || "",
     category_id: subcategory?.category_id || defaultParentId || "",
     additional_attribute_schema: subcategory?.additional_attribute_schema || [],
-    category_image_url: subcategory?.category_image_url || "",
-    category_icon_url: subcategory?.category_icon_url || "",
+    // Sanitize URLs on init — strip placeholder yourstore.com URLs
+    category_image_url: isRealUrl(subcategory?.category_image_url) ? subcategory.category_image_url : "",
+    category_icon_url: isRealUrl(subcategory?.category_icon_url) ? subcategory.category_icon_url : "",
   });
   const [errors, setErrors] = useState({});
 
@@ -376,7 +618,27 @@ const SubcategoryModal = ({ subcategory, parentCategories, defaultParentId, onCl
   const handleSubmit = async (e) => {
     e?.preventDefault();
     if (!validate()) return;
-    onSave(form, isEdit ? subcategory.id : null);
+
+    const cleanedForm = {
+      name: form.name,
+      description: form.description || "",
+      category_id: form.category_id,
+      slug: form.slug && form.slug.trim() ? form.slug.trim() : undefined,
+      // Only pass real URLs — never pass placeholder or empty strings
+      category_image_url: isRealUrl(form.category_image_url) ? form.category_image_url : undefined,
+      category_icon_url: isRealUrl(form.category_icon_url) ? form.category_icon_url : undefined,
+      additional_attribute_schema: form.additional_attribute_schema.map((attr) => ({
+        key: String(attr.key || ""),
+        label: String(attr.label || ""),
+        type: String(attr.type || "text"),
+        required: Boolean(attr.required),
+        options: ["select", "multiselect"].includes(attr.type)
+          ? (attr.options || []).filter(Boolean)
+          : [],
+      })),
+    };
+
+    onSave(cleanedForm, isEdit ? subcategory.id : null);
   };
 
   return (
@@ -389,7 +651,6 @@ const SubcategoryModal = ({ subcategory, parentCategories, defaultParentId, onCl
           boxShadow: "0 30px 80px rgba(0,0,0,0.7)",
           maxHeight: "92dvh",
         }}>
-        {/* Header */}
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 sm:py-5 border-b shrink-0"
           style={{ borderColor: "rgba(255,255,255,0.06)" }}>
           <div className="flex items-center gap-3">
@@ -407,7 +668,6 @@ const SubcategoryModal = ({ subcategory, parentCategories, defaultParentId, onCl
           </button>
         </div>
 
-        {/* Form body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-5">
           {errors.general && (
             <div className="flex items-start gap-2 rounded-xl px-4 py-3 bg-red-500/10 border border-red-500/20">
@@ -416,7 +676,6 @@ const SubcategoryModal = ({ subcategory, parentCategories, defaultParentId, onCl
             </div>
           )}
 
-          {/* Parent category picker */}
           <div>
             <label className={labelCls}>Parent Category *</label>
             {isEdit ? (
@@ -438,7 +697,6 @@ const SubcategoryModal = ({ subcategory, parentCategories, defaultParentId, onCl
             {errors.category_id && <p className="text-xs text-red-400 mt-1">{errors.category_id}</p>}
           </div>
 
-          {/* Inherited schema info */}
           {selectedParent && selectedParent.attribute_schema?.length > 0 && (
             <div className="rounded-xl px-4 py-3 bg-indigo-500/5 border border-indigo-500/15">
               <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1.5">
@@ -455,7 +713,6 @@ const SubcategoryModal = ({ subcategory, parentCategories, defaultParentId, onCl
             </div>
           )}
 
-          {/* Name & Slug */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Subcategory Name *</label>
@@ -472,7 +729,6 @@ const SubcategoryModal = ({ subcategory, parentCategories, defaultParentId, onCl
             </div>
           </div>
 
-          {/* Description */}
           <div>
             <label className={labelCls}>Description</label>
             <textarea rows={3} placeholder="Brief description..."
@@ -480,10 +736,21 @@ const SubcategoryModal = ({ subcategory, parentCategories, defaultParentId, onCl
               className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none resize-none placeholder-white/20 transition-all" />
           </div>
 
-          {/* Media fields */}
-          <MediaFields form={form} set={set} />
+          <div className="space-y-4">
+            <ImageUploader
+              currentImageUrl={form.category_image_url}
+              onImageUploaded={(url) => set("category_image_url", url)}
+              label="Subcategory Image"
+              type="image"
+            />
+            <ImageUploader
+              currentImageUrl={form.category_icon_url}
+              onImageUploaded={(url) => set("category_icon_url", url)}
+              label="Subcategory Icon"
+              type="icon"
+            />
+          </div>
 
-          {/* Additional attribute schema */}
           <AttributeBuilder
             schema={form.additional_attribute_schema}
             onChange={(s) => set("additional_attribute_schema", s)}
@@ -495,7 +762,6 @@ const SubcategoryModal = ({ subcategory, parentCategories, defaultParentId, onCl
           )}
         </form>
 
-        {/* Footer */}
         <div className="flex gap-3 px-5 sm:px-6 py-4 border-t shrink-0"
           style={{ borderColor: "rgba(255,255,255,0.06)" }}>
           <button type="button" onClick={onClose}
@@ -588,10 +854,10 @@ const DeleteConfirm = ({ item, label = "category", warningNote, onConfirm, onCan
   </div>
 );
 
-// ─── Subcategory Row (compact inside parent card) ─────────────────────────────
+// ─── Subcategory Row ───────────────────────────────────────────────────────────
 const SubcategoryRow = ({ sub, onEdit, onDeactivate, onReactivate, onDelete }) => {
   const isActive = sub.is_active !== false;
-  const [toggleModal, setToggleModal] = useState(null); // "deactivate" | "reactivate" | null
+  const [toggleModal, setToggleModal] = useState(null);
   const [showDelete, setShowDelete] = useState(false);
 
   return (
@@ -619,13 +885,8 @@ const SubcategoryRow = ({ sub, onEdit, onDeactivate, onReactivate, onDelete }) =
       )}
 
       <div className="flex flex-wrap items-center gap-2 py-2.5 px-3 rounded-xl bg-white/3 hover:bg-white/5 border border-white/5 transition-all group">
-        {/* Icon */}
-        <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: "linear-gradient(135deg,#6366F1,#8B5CF6)" }}>
-          <FiLayers size={11} className="text-white" />
-        </div>
+        <SubcategoryIcon url={sub.category_icon_url} name={sub.name} size="sm" />
 
-        {/* Name & badge */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-bold text-white/80 truncate">{sub.name}</span>
@@ -645,7 +906,6 @@ const SubcategoryRow = ({ sub, onEdit, onDeactivate, onReactivate, onDelete }) =
           )}
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-1 ml-auto shrink-0">
           <button onClick={() => onEdit(sub)}
             className="p-1.5 rounded-lg text-white/30 hover:text-[#FF8C00] hover:bg-[#FF8C00]/5 transition-all" title="Edit">
@@ -713,16 +973,9 @@ const CategoryCard = ({
       <div className="rounded-2xl border border-white/5 hover:border-white/10 transition-all duration-200 overflow-hidden"
         style={{ background: "#0d0d14", boxShadow: "0 2px 16px rgba(0,0,0,0.25)" }}>
 
-        {/* Card top */}
         <div className="p-4 sm:p-5">
           <div className="flex items-start gap-3 mb-3">
-            {/* Icon / image */}
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
-              style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}>
-              {category.category_icon_url
-                ? <img src={category.category_icon_url} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = "none"; }} />
-                : <MdOutlineCategory size={20} className="text-white" />}
-            </div>
+            <CategoryIcon url={category.category_icon_url} name={category.name} size="md" />
 
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -763,7 +1016,6 @@ const CategoryCard = ({
             </p>
           )}
 
-          {/* Attribute preview chips */}
           {attrCount > 0 && (
             <div className="flex flex-wrap gap-1 mb-3">
               {category.attribute_schema.slice(0, 4).map((a, i) => (
@@ -779,7 +1031,6 @@ const CategoryCard = ({
             </div>
           )}
 
-          {/* Action row */}
           <div className="flex items-center gap-1 pt-3 border-t border-white/5 flex-wrap">
             <button onClick={() => onEdit(category)}
               className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-[#FF8C00] transition-colors px-2.5 py-1.5 rounded-xl hover:bg-[#FF8C00]/5">
@@ -803,11 +1054,8 @@ const CategoryCard = ({
           </div>
         </div>
 
-        {/* Subcategories section */}
         <div className="border-t border-white/5">
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="w-full flex items-center justify-between px-4 sm:px-5 py-3 text-left hover:bg-white/2 transition-all">
+          <div className="w-full flex items-center justify-between px-4 sm:px-5 py-3">
             <div className="flex items-center gap-2">
               <FiLayers size={12} className="text-indigo-400" />
               <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
@@ -826,12 +1074,16 @@ const CategoryCard = ({
                 <FiPlus size={10} /> Add
               </button>
               {subCount > 0 && (
-                expanded
-                  ? <FiChevronDown size={13} className="text-white/30" />
-                  : <FiChevronRight size={13} className="text-white/30" />
+                <button
+                  onClick={() => setExpanded((v) => !v)}
+                  className="p-1 hover:bg-white/5 rounded-lg transition-all">
+                  {expanded
+                    ? <FiChevronDown size={13} className="text-white/30" />
+                    : <FiChevronRight size={13} className="text-white/30" />}
+                </button>
               )}
             </div>
-          </button>
+          </div>
 
           {expanded && subCount > 0 && (
             <div className="px-4 sm:px-5 pb-4 space-y-2">
@@ -869,33 +1121,23 @@ const CategoryCard = ({
 // ─── Main Categories Page ──────────────────────────────────────────────────────
 const Categories = () => {
   const [categories, setCategories] = useState([]);
-  const [subcategories, setSubcategories] = useState([]); // all subcats
+  const [subcategories, setSubcategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState(null);
-
-  // Modal state:
-  // catModal: null | "create" | categoryObject
-  // subModal: null | "create" | subcategoryObject
   const [catModal, setCatModal] = useState(null);
   const [subModal, setSubModal] = useState(null);
-  const [subModalParentId, setSubModalParentId] = useState(null); // pre-fill parent when adding from card
-
-  // Filters
+  const [subModalParentId, setSubModalParentId] = useState(null);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [showInactive, setShowInactive] = useState(true);
-
-  // Which tab: "categories" | "subcategories"
   const [activeTab, setActiveTab] = useState("categories");
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
-
-  // ── Fetch ────────────────────────────────────────────────────────────────────
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -920,8 +1162,6 @@ const Categories = () => {
   }, [filterType, showInactive]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
-
-  // ── Category CRUD ─────────────────────────────────────────────────────────────
 
   const handleSaveCategory = async (formData, editId) => {
     setSaving(true);
@@ -966,8 +1206,6 @@ const Categories = () => {
       await fetchAll();
     } catch (err) { showToast(err.message || "Failed to delete. Category may have subcategories linked.", "error"); }
   };
-
-  // ── Subcategory CRUD ──────────────────────────────────────────────────────────
 
   const handleSaveSubcategory = async (formData, editId) => {
     setSaving(true);
@@ -1014,8 +1252,6 @@ const Categories = () => {
     } catch (err) { showToast(err.message || "Failed to delete. Subcategory may have products linked.", "error"); }
   };
 
-  // ── Filtering ──────────────────────────────────────────────────────────────────
-
   const filteredCategories = categories.filter((c) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
@@ -1028,26 +1264,19 @@ const Categories = () => {
     return s.name?.toLowerCase().includes(q) || s.slug?.toLowerCase().includes(q);
   });
 
-  // Group subcats by parent
   const subsByCategory = (categoryId) =>
     subcategories.filter((s) => s.category_id === categoryId);
 
-  // Stats
   const activeCount = categories.filter((c) => c.is_active !== false).length;
   const inactiveCount = categories.filter((c) => c.is_active === false).length;
   const productCount = categories.filter((c) => c.category_type === "PRODUCT").length;
   const serviceCount = categories.filter((c) => c.category_type === "SERVICE").length;
-
-  const activeSubCount = subcategories.filter((s) => s.is_active !== false).length;
-
-  // ── Active parent categories (for subcategory modal selector) ─────────────────
   const activeParentCategories = categories.filter((c) => c.is_active !== false);
 
   return (
     <div className="space-y-5 sm:space-y-6 max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 pb-10">
       <Toast toast={toast} />
 
-      {/* ── Modals ── */}
       {catModal && (
         <CategoryModal
           category={catModal === "create" ? null : catModal}
@@ -1067,7 +1296,6 @@ const Categories = () => {
         />
       )}
 
-      {/* ── Header ── */}
       <div className="flex flex-col xs:flex-row xs:items-start sm:items-center justify-between gap-3 pt-1">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white" style={{ fontFamily: "'Playfair Display',serif" }}>
@@ -1101,7 +1329,6 @@ const Categories = () => {
         </div>
       </div>
 
-      {/* ── Stats ── */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
         {[
           { label: "Total Cats", value: categories.length, color: "#0EA5E9" },
@@ -1118,9 +1345,7 @@ const Categories = () => {
         ))}
       </div>
 
-      {/* ── Filters ── */}
       <div className="flex flex-col sm:flex-row gap-2.5">
-        {/* Search */}
         <div className="flex-1 flex items-center gap-3 rounded-2xl border bg-white/5 px-4 py-2.5 focus-within:border-[#FF8C00]/40 transition-all"
           style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
           <FiSearch size={14} className="text-white/30 shrink-0" />
@@ -1134,7 +1359,6 @@ const Categories = () => {
           )}
         </div>
 
-        {/* Type filter */}
         <div className="flex gap-1 p-1 rounded-2xl shrink-0 overflow-x-auto"
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
           {["all", "PRODUCT", "SERVICE"].map((type) => (
@@ -1148,20 +1372,18 @@ const Categories = () => {
           ))}
         </div>
 
-        {/* Show inactive toggle */}
         <button
           onClick={() => setShowInactive(!showInactive)}
-          className={`shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            showInactive
-              ? "text-white border border-[#EF4444]/30 bg-[#EF4444]/10"
-              : "text-white/30 hover:text-white/60"
-          }`}
-          style={{ background: showInactive ? "rgba(239,68,68,0.08)" : "rgba(255,255,255,0.04)", border: showInactive ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(255,255,255,0.06)" }}>
+          className="shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
+          style={{
+            background: showInactive ? "rgba(239,68,68,0.08)" : "rgba(255,255,255,0.04)",
+            border: showInactive ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(255,255,255,0.06)",
+            color: showInactive ? "white" : "rgba(255,255,255,0.3)",
+          }}>
           {showInactive ? "✓ Inactive" : "Inactive"}
         </button>
       </div>
 
-      {/* ── Tab switcher ── */}
       <div className="flex gap-1 p-1 rounded-2xl w-full sm:w-auto"
         style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
         {[
@@ -1178,7 +1400,6 @@ const Categories = () => {
         ))}
       </div>
 
-      {/* ── Error ── */}
       {error && (
         <div className="flex items-start gap-2 rounded-2xl px-4 py-3"
           style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
@@ -1187,7 +1408,6 @@ const Categories = () => {
         </div>
       )}
 
-      {/* ── Content ── */}
       {loading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -1234,7 +1454,6 @@ const Categories = () => {
           </div>
         )
       ) : (
-        /* ── Subcategories flat list tab ── */
         filteredSubcategories.length === 0 ? (
           <div className="rounded-3xl p-10 sm:p-16 text-center border"
             style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -1254,13 +1473,12 @@ const Categories = () => {
             {filteredSubcategories.map((sub) => {
               const parent = categories.find((c) => c.id === sub.category_id);
               const isActive = sub.is_active !== false;
-              const attrCount = (sub.additional_attribute_schema?.length || 0);
+              const attrCount = sub.additional_attribute_schema?.length || 0;
               return (
                 <div key={sub.id}
                   className="rounded-2xl border border-white/5 hover:border-white/10 transition-all duration-200 p-4 sm:p-5"
                   style={{ background: "#0d0d14", boxShadow: "0 2px 16px rgba(0,0,0,0.25)" }}>
 
-                  {/* Parent badge */}
                   {parent && (
                     <div className="flex items-center gap-1.5 mb-3">
                       <div className="w-5 h-5 rounded-lg flex items-center justify-center shrink-0"
@@ -1272,15 +1490,9 @@ const Categories = () => {
                     </div>
                   )}
 
-                  {/* Sub header */}
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: "linear-gradient(135deg,#6366F1,#8B5CF6)" }}>
-                        {sub.category_icon_url
-                          ? <img src={sub.category_icon_url} alt="" className="w-full h-full object-cover rounded-xl" onError={(e) => { e.target.style.display = "none"; }} />
-                          : <FiLayers size={14} className="text-white" />}
-                      </div>
+                      <SubcategoryIcon url={sub.category_icon_url} name={sub.name} size="md" />
                       <div className="min-w-0">
                         <h3 className="text-sm font-black text-white/90 truncate">{sub.name}</h3>
                         {sub.slug && (
@@ -1309,24 +1521,30 @@ const Categories = () => {
                     </div>
                   )}
 
-                  {/* Actions */}
                   <div className="flex items-center gap-1 pt-3 border-t border-white/5 flex-wrap">
                     <button onClick={() => setSubModal(sub)}
                       className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-[#FF8C00] transition-colors px-2.5 py-1.5 rounded-xl hover:bg-[#FF8C00]/5">
                       <FiEdit2 size={11} /> Edit
                     </button>
                     {isActive ? (
-                      <SubcategoryToggleBtn
-                        action="deactivate" sub={sub}
-                        onConfirm={handleDeactivateSubcategory}
-                      />
+                      <button onClick={() => handleDeactivateSubcategory(sub)}
+                        className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-amber-400 transition-colors px-2.5 py-1.5 rounded-xl hover:bg-amber-400/5">
+                        <FiToggleLeft size={12} /> Deactivate
+                      </button>
                     ) : (
-                      <SubcategoryToggleBtn
-                        action="reactivate" sub={sub}
-                        onConfirm={handleReactivateSubcategory}
-                      />
+                      <button onClick={() => handleReactivateSubcategory(sub)}
+                        className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-emerald-400 transition-colors px-2.5 py-1.5 rounded-xl hover:bg-emerald-400/5">
+                        <FiToggleRight size={12} /> Reactivate
+                      </button>
                     )}
-                    <SubcategoryDeleteBtn sub={sub} onConfirm={handleDeleteSubcategory} />
+                    <button onClick={async () => {
+                      if (window.confirm(`Are you sure you want to delete "${sub.name}"? This action cannot be undone.`)) {
+                        await handleDeleteSubcategory(sub);
+                      }
+                    }}
+                      className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-red-400 transition-colors px-2.5 py-1.5 rounded-xl hover:bg-red-500/5 ml-auto">
+                      <FiTrash2 size={11} /> Delete
+                    </button>
                   </div>
                 </div>
               );
@@ -1335,53 +1553,6 @@ const Categories = () => {
         )
       )}
     </div>
-  );
-};
-
-// ── Tiny inline helpers for the flat subcategory grid ───────────────────────────
-const SubcategoryToggleBtn = ({ action, sub, onConfirm }) => {
-  const [show, setShow] = useState(false);
-  return (
-    <>
-      {show && (
-        <ToggleStatusModal
-          item={sub} action={action}
-          onConfirm={() => { onConfirm(sub); setShow(false); }}
-          onCancel={() => setShow(false)}
-          loading={false}
-        />
-      )}
-      <button onClick={() => setShow(true)}
-        className={`flex items-center gap-1.5 text-xs font-bold transition-colors px-2.5 py-1.5 rounded-xl ${
-          action === "deactivate"
-            ? "text-white/40 hover:text-amber-400 hover:bg-amber-400/5"
-            : "text-white/40 hover:text-emerald-400 hover:bg-emerald-400/5"
-        }`}>
-        {action === "deactivate" ? <FiToggleLeft size={12} /> : <FiToggleRight size={12} />}
-        {action === "deactivate" ? "Deactivate" : "Reactivate"}
-      </button>
-    </>
-  );
-};
-
-const SubcategoryDeleteBtn = ({ sub, onConfirm }) => {
-  const [show, setShow] = useState(false);
-  return (
-    <>
-      {show && (
-        <DeleteConfirm
-          item={sub} label="subcategory"
-          warningNote="Only allowed if no products have ever been listed under this subcategory."
-          onConfirm={() => { onConfirm(sub); setShow(false); }}
-          onCancel={() => setShow(false)}
-          loading={false}
-        />
-      )}
-      <button onClick={() => setShow(true)}
-        className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-red-400 transition-colors px-2.5 py-1.5 rounded-xl hover:bg-red-500/5 ml-auto">
-        <FiTrash2 size={11} /> Delete
-      </button>
-    </>
   );
 };
 
