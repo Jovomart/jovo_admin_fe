@@ -44,7 +44,11 @@ const Sidebar = ({ mobileOpen, onClose }) => {
       to: "/admin-products",
     },
     { label: "Delivery", icon: <FiTruck size={18} />, to: "/delivery" },
-
+    {
+      label: "Campaigns",
+      icon: <FiGrid size={18} />,
+      to: "/campaigns",
+    },
     { label: "Settings", icon: <FiSettings size={18} />, to: "/settings" },
   ];
 

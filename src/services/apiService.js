@@ -121,21 +121,34 @@ class ApiService {
       console.log(`📡 Response for ${endpoint}: status ${response.status}`);
 
       if (response.status === 401) {
-        console.error("Authentication failed. Clearing tokens...");
-        this.clearTokens();
+        const errorMsg =
+          data?.detail?.message ||
+          data?.detail ||
+          data?.message ||
+          "";
 
-        if (
-          typeof window !== "undefined" &&
-          !window.location.pathname.includes("/login")
-        ) {
-          window.location.href = "/login";
+        const isAuthEndpoint = endpoint.includes("/auth/");
+        const hasNoToken = !this.getAccessToken();
+        const isNotAuthenticated =
+          errorMsg.toLowerCase().includes("not authenticated");
+
+        if (isAuthEndpoint || hasNoToken || isNotAuthenticated) {
+          console.error("Authentication failed. Clearing tokens...");
+          this.clearTokens();
+          if (
+            typeof window !== "undefined" &&
+            !window.location.pathname.includes("/login")
+          ) {
+            window.location.href = "/login";
+          }
+        } else {
+          console.warn(
+            `⚠️ 401 on ${endpoint} but token is valid — likely a backend permission bug. Not logging out.`
+          );
         }
 
         throw new Error(
-          data?.detail?.message ||
-            data?.detail ||
-            data?.message ||
-            "Your session has expired. Please log in again."
+          errorMsg || "You don't have permission to access this resource."
         );
       }
 
@@ -466,28 +479,30 @@ class ApiService {
   }
 
   async updateCategory(categoryId, data) {
-    const payload = {
-      name: data.name,
-      description: data.description || "",
-      attribute_schema:
-        data.attribute_schema && data.attribute_schema.length > 0
-          ? data.attribute_schema.map((attr) => ({
-              key: String(attr.key || ""),
-              label: String(attr.label || ""),
-              type: String(attr.type || "text"),
-              required: Boolean(attr.required),
-              options: ["select", "multiselect"].includes(attr.type)
-                ? (attr.options || []).filter(Boolean)
-                : [],
-            }))
-          : [],
-    };
+    const payload = {};
+
+    if (data.name && data.name.trim()) {
+      payload.name = data.name.trim();
+    }
+
+    payload.description = data.description || "";
 
     if (data.slug && data.slug.trim()) {
       payload.slug = data.slug.trim();
     }
 
-    // Only send real Cloudinary URLs — never placeholder yourstore.com URLs
+    if (Array.isArray(data.attribute_schema) && data.attribute_schema.length > 0) {
+      payload.attribute_schema = data.attribute_schema.map((attr) => ({
+        key: String(attr.key || ""),
+        label: String(attr.label || ""),
+        type: String(attr.type || "text"),
+        required: Boolean(attr.required),
+        options: ["select", "multiselect"].includes(attr.type)
+          ? (attr.options || []).filter(Boolean)
+          : [],
+      }));
+    }
+
     if (this.isRealUrl(data.category_image_url)) {
       payload.category_image_url = data.category_image_url;
     }
@@ -499,7 +514,10 @@ class ApiService {
       payload.category_metadata = data.category_metadata;
     }
 
-    console.log("📦 Update category payload (final):", JSON.stringify(payload, null, 2));
+    console.log(
+      "📦 Update category payload (final):",
+      JSON.stringify(payload, null, 2)
+    );
 
     return this.makeRequest(`/admin/category/update-category/${categoryId}`, {
       method: "PUT",
@@ -575,22 +593,34 @@ class ApiService {
   }
 
   async updateSubcategory(subcategoryId, data) {
-    const payload = {
-      name: data.name,
-      description: data.description || "",
-      additional_attribute_schema:
-        data.additional_attribute_schema && data.additional_attribute_schema.length > 0
-          ? data.additional_attribute_schema.map((attr) => ({
-              key: String(attr.key || ""),
-              label: String(attr.label || ""),
-              type: String(attr.type || "text"),
-              required: Boolean(attr.required),
-              options: ["select", "multiselect"].includes(attr.type)
-                ? (attr.options || []).filter(Boolean)
-                : [],
-            }))
-          : [],
-    };
+    const payload = {};
+
+    if (data.name && data.name.trim()) {
+      payload.name = data.name.trim();
+    }
+
+    payload.description = data.description || "";
+
+    if (data.slug && data.slug.trim()) {
+      payload.slug = data.slug.trim();
+    }
+
+    if (
+      Array.isArray(data.additional_attribute_schema) &&
+      data.additional_attribute_schema.length > 0
+    ) {
+      payload.additional_attribute_schema = data.additional_attribute_schema.map(
+        (attr) => ({
+          key: String(attr.key || ""),
+          label: String(attr.label || ""),
+          type: String(attr.type || "text"),
+          required: Boolean(attr.required),
+          options: ["select", "multiselect"].includes(attr.type)
+            ? (attr.options || []).filter(Boolean)
+            : [],
+        })
+      );
+    }
 
     if (this.isRealUrl(data.category_image_url)) {
       payload.category_image_url = data.category_image_url;
@@ -601,6 +631,11 @@ class ApiService {
     if (data.category_metadata !== undefined && data.category_metadata !== null) {
       payload.category_metadata = data.category_metadata;
     }
+
+    console.log(
+      "📦 Update subcategory payload (final):",
+      JSON.stringify(payload, null, 2)
+    );
 
     return this.makeRequest(
       `/admin/category/subcategory/update-subcategory/${subcategoryId}`,
@@ -986,6 +1021,86 @@ class ApiService {
 
   async uploadProviderCover(file, providerId = null) {
     return this.uploadFiles([file], "provider_cover", providerId);
+  }
+
+  // ─── CAMPAIGN MANAGEMENT ───────────────────────────────────────────────────
+
+  /**
+   * Get all flash sale campaigns, optionally filtered by status.
+   * @param {string|null} statusFilter - "past" | "current" | "upcoming" | null
+   */
+  async getFlashSales(statusFilter = null) {
+    const params = new URLSearchParams();
+    if (statusFilter) params.append("status_filter", statusFilter);
+    const qs = params.toString();
+    return this.makeRequest(
+      `/admin/campaigns/flash-sale${qs ? `?${qs}` : ""}`,
+      { method: "GET" }
+    );
+  }
+
+  /**
+   * Schedule (create) a new flash sale.
+   * @param {{ title: string, start_time: string, end_time: string }} data
+   */
+  async createFlashSale({ title, start_time, end_time }) {
+    return this.makeRequest("/admin/campaigns/flash-sale", {
+      method: "POST",
+      body: JSON.stringify({ title, start_time, end_time }),
+    });
+  }
+
+  /**
+   * Update an existing flash sale campaign.
+   * @param {string} campaignId
+   * @param {{ title?: string, start_time?: string, end_time?: string, is_active?: boolean }} data
+   */
+  async updateFlashSale(campaignId, data) {
+    return this.makeRequest(`/admin/campaigns/flash-sale/${campaignId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Permanently delete a flash sale and its associated applications.
+   * @param {string} campaignId
+   */
+  async deleteFlashSale(campaignId) {
+    return this.makeRequest(`/admin/campaigns/flash-sale/${campaignId}`, {
+      method: "DELETE",
+    });
+  }
+
+  /**
+   * List all seller product applications for flash sale events.
+   */
+  async getFlashSaleApplications() {
+    return this.makeRequest("/admin/campaigns/flash-sale/applications", {
+      method: "GET",
+    });
+  }
+
+  /**
+   * Approve a seller's flash sale application.
+   * @param {string} applicationId
+   */
+  async approveFlashSaleApplication(applicationId) {
+    return this.makeRequest(
+      `/admin/campaigns/flash-sale/applications/${applicationId}/approve`,
+      { method: "POST" }
+    );
+  }
+
+  /**
+   * Reject a seller's flash sale application.
+   * @param {string} applicationId
+   */
+  async rejectFlashSaleApplication(applicationId) {
+    return this.makeRequest(
+      `/admin/campaigns/flash-sale/applications/${applicationId}/reject`,
+      { method: "POST" }
+    );
   }
 
   // ─── LOGOUT ────────────────────────────────────────────────────────────────

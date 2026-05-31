@@ -18,6 +18,7 @@ import CampusGuideManagement from "../pages/CampusGuideManagement";
 import PickupStations from "../pages/PickupStations";
 import AdminProducts from "../pages/AdminProducts";
 import Revenue from "../pages/Revenue";
+import CampaignManagement from "../pages/CampaignManagement";
 
 const AppRoutes = () => (
   <Routes>
@@ -50,6 +51,7 @@ const AppRoutes = () => (
       <Route path="/campus-guide" element={<CampusGuideManagement />} />
       <Route path="/admin-products" element={<AdminProducts />} />
       <Route path="/revenue" element={<Revenue />} />
+      <Route path="/campaigns" element={<CampaignManagement />} />
     </Route>
 
     <Route path="*" element={<Navigate to="/dashboard" replace />} />
