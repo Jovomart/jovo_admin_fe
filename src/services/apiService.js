@@ -122,15 +122,13 @@ class ApiService {
 
       if (response.status === 401) {
         const errorMsg =
-          data?.detail?.message ||
-          data?.detail ||
-          data?.message ||
-          "";
+          data?.detail?.message || data?.detail || data?.message || "";
 
         const isAuthEndpoint = endpoint.includes("/auth/");
         const hasNoToken = !this.getAccessToken();
-        const isNotAuthenticated =
-          errorMsg.toLowerCase().includes("not authenticated");
+        const isNotAuthenticated = errorMsg
+          .toLowerCase()
+          .includes("not authenticated");
 
         if (isAuthEndpoint || hasNoToken || isNotAuthenticated) {
           console.error("Authentication failed. Clearing tokens...");
@@ -143,19 +141,19 @@ class ApiService {
           }
         } else {
           console.warn(
-            `⚠️ 401 on ${endpoint} but token is valid — likely a backend permission bug. Not logging out.`
+            `⚠️ 401 on ${endpoint} but token is valid — likely a backend permission bug. Not logging out.`,
           );
         }
 
         throw new Error(
-          errorMsg || "You don't have permission to access this resource."
+          errorMsg || "You don't have permission to access this resource.",
         );
       }
 
       if (!response.ok) {
         console.error(
           `Admin API Error [${response.status}] ${endpoint}:`,
-          data
+          data,
         );
         throw new Error(this.extractErrorMessage(data, response.status));
       }
@@ -220,14 +218,14 @@ class ApiService {
   async sendForgotPasswordCode(email) {
     return this.makeRequest(
       `/admin/auth/send-forgotten-password-code?email=${encodeURIComponent(email)}`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
   async resetPasswordWithCode(email, code, newPassword, confirmPassword) {
     return this.makeRequest(
       `/admin/auth/reset-password-with-code?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&new_password=${encodeURIComponent(newPassword)}&confirm_password=${encodeURIComponent(confirmPassword)}`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
@@ -342,14 +340,14 @@ class ApiService {
   async resendInvitation(invitationId) {
     return this.makeRequest(
       `/admin/invitation/resend-invitation/${invitationId}`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
   async revokeInvitation(invitationId) {
     return this.makeRequest(
       `/admin/invitation/revoke-invitation/${invitationId}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
   }
 
@@ -409,28 +407,28 @@ class ApiService {
   async getAvailableDeliveryOptions(cartTotal, totalWeight) {
     return this.makeRequest(
       `/admin/delivery/options/available?cart_total=${cartTotal}&total_weight=${totalWeight}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
   async deactivateDeliveryOption(deliveryId) {
     return this.makeRequest(
       `/admin/delivery/options/${deliveryId}/deactivate`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
   async reactivateDeliveryOption(deliveryId) {
     return this.makeRequest(
       `/admin/delivery/options/${deliveryId}/reactivate`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
   async permanentlyDeleteDeliveryOption(deliveryId) {
     return this.makeRequest(
       `/admin/delivery/options/${deliveryId}/permanently-delete`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
   }
 
@@ -460,7 +458,7 @@ class ApiService {
   async getAdminCategories(
     categoryType = null,
     includeInactive = false,
-    includeSubcategories = false
+    includeSubcategories = false,
   ) {
     const params = new URLSearchParams();
     if (categoryType) params.append("category_type", categoryType);
@@ -468,7 +466,7 @@ class ApiService {
     params.append("include_subcategories", includeSubcategories);
     return this.makeRequest(
       `/admin/category/get-all-categories?${params.toString()}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
@@ -491,7 +489,10 @@ class ApiService {
       payload.slug = data.slug.trim();
     }
 
-    if (Array.isArray(data.attribute_schema) && data.attribute_schema.length > 0) {
+    if (
+      Array.isArray(data.attribute_schema) &&
+      data.attribute_schema.length > 0
+    ) {
       payload.attribute_schema = data.attribute_schema.map((attr) => ({
         key: String(attr.key || ""),
         label: String(attr.label || ""),
@@ -510,13 +511,16 @@ class ApiService {
       payload.category_icon_url = data.category_icon_url;
     }
 
-    if (data.category_metadata !== undefined && data.category_metadata !== null) {
+    if (
+      data.category_metadata !== undefined &&
+      data.category_metadata !== null
+    ) {
       payload.category_metadata = data.category_metadata;
     }
 
     console.log(
       "📦 Update category payload (final):",
-      JSON.stringify(payload, null, 2)
+      JSON.stringify(payload, null, 2),
     );
 
     return this.makeRequest(`/admin/category/update-category/${categoryId}`, {
@@ -528,14 +532,14 @@ class ApiService {
   async deactivateCategory(categoryId) {
     return this.makeRequest(
       `/admin/category/deactivate-category/${categoryId}`,
-      { method: "PATCH" }
+      { method: "PATCH" },
     );
   }
 
   async reactivateCategory(categoryId) {
     return this.makeRequest(
       `/admin/category/reactivate-category/${categoryId}`,
-      { method: "PATCH" }
+      { method: "PATCH" },
     );
   }
 
@@ -571,7 +575,7 @@ class ApiService {
   async getAdminSubcategories(
     categoryId = null,
     includeInactive = false,
-    includeEffectiveSchema = false
+    includeEffectiveSchema = false,
   ) {
     const params = new URLSearchParams();
     if (categoryId) params.append("category_id", categoryId);
@@ -579,7 +583,7 @@ class ApiService {
     params.append("include_effective_schema", includeEffectiveSchema);
     return this.makeRequest(
       `/admin/category/subcategory/get-all-subcategories?${params.toString()}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
@@ -588,7 +592,7 @@ class ApiService {
     params.append("include_effective_schema", includeEffectiveSchema);
     return this.makeRequest(
       `/admin/category/subcategory/get-subcategory/${subcategoryId}?${params.toString()}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
@@ -609,8 +613,8 @@ class ApiService {
       Array.isArray(data.additional_attribute_schema) &&
       data.additional_attribute_schema.length > 0
     ) {
-      payload.additional_attribute_schema = data.additional_attribute_schema.map(
-        (attr) => ({
+      payload.additional_attribute_schema =
+        data.additional_attribute_schema.map((attr) => ({
           key: String(attr.key || ""),
           label: String(attr.label || ""),
           type: String(attr.type || "text"),
@@ -618,8 +622,7 @@ class ApiService {
           options: ["select", "multiselect"].includes(attr.type)
             ? (attr.options || []).filter(Boolean)
             : [],
-        })
-      );
+        }));
     }
 
     if (this.isRealUrl(data.category_image_url)) {
@@ -628,39 +631,42 @@ class ApiService {
     if (this.isRealUrl(data.category_icon_url)) {
       payload.category_icon_url = data.category_icon_url;
     }
-    if (data.category_metadata !== undefined && data.category_metadata !== null) {
+    if (
+      data.category_metadata !== undefined &&
+      data.category_metadata !== null
+    ) {
       payload.category_metadata = data.category_metadata;
     }
 
     console.log(
       "📦 Update subcategory payload (final):",
-      JSON.stringify(payload, null, 2)
+      JSON.stringify(payload, null, 2),
     );
 
     return this.makeRequest(
       `/admin/category/subcategory/update-subcategory/${subcategoryId}`,
-      { method: "PUT", body: JSON.stringify(payload) }
+      { method: "PUT", body: JSON.stringify(payload) },
     );
   }
 
   async deactivateSubcategory(subcategoryId) {
     return this.makeRequest(
       `/admin/category/subcategory/deactivate-subcategory/${subcategoryId}`,
-      { method: "PATCH" }
+      { method: "PATCH" },
     );
   }
 
   async reactivateSubcategory(subcategoryId) {
     return this.makeRequest(
       `/admin/category/subcategory/reactivate-subcategory/${subcategoryId}`,
-      { method: "PATCH" }
+      { method: "PATCH" },
     );
   }
 
   async deleteSubcategory(subcategoryId) {
     return this.makeRequest(
       `/admin/category/subcategory/delete-subcategory/${subcategoryId}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
   }
 
@@ -709,7 +715,7 @@ class ApiService {
       schoolEmail,
       schoolWebsite,
       schoolLogoUrl,
-    }
+    },
   ) {
     return this.makeRequest(`/admin/school/update-school/${schoolId}`, {
       method: "PUT",
@@ -770,7 +776,7 @@ class ApiService {
     const query = qs.toString();
     return this.makeRequest(
       `/admin/campus-guide/all${query ? `?${query}` : ""}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
@@ -818,7 +824,7 @@ class ApiService {
     const query = qs.toString();
     return this.makeRequest(
       `/admin/campus-guide/reviews/all${query ? `?${query}` : ""}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
@@ -898,7 +904,7 @@ class ApiService {
     const query = qs.toString();
     return this.makeRequest(
       `/admin/pickup-station/get-all/${schoolId}${query ? `?${query}` : ""}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
@@ -965,7 +971,7 @@ class ApiService {
     const queryString = queryParams.toString();
     return this.makeRequest(
       `/admin/revenue${queryString ? `?${queryString}` : ""}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
@@ -1035,7 +1041,7 @@ class ApiService {
     const qs = params.toString();
     return this.makeRequest(
       `/admin/campaigns/flash-sale${qs ? `?${qs}` : ""}`,
-      { method: "GET" }
+      { method: "GET" },
     );
   }
 
@@ -1088,7 +1094,7 @@ class ApiService {
   async approveFlashSaleApplication(applicationId) {
     return this.makeRequest(
       `/admin/campaigns/flash-sale/applications/${applicationId}/approve`,
-      { method: "POST" }
+      { method: "POST" },
     );
   }
 
@@ -1096,55 +1102,225 @@ class ApiService {
    * Reject a seller's flash sale application.
    * @param {string} applicationId
    */
-  async rejectFlashSaleApplication(applicationId) {
+  async rejectFlashSaleApplication(applicationId, rejectionReason = "") {
     return this.makeRequest(
       `/admin/campaigns/flash-sale/applications/${applicationId}/reject`,
-      { method: "POST" }
+      {
+        method: "POST",
+        body: JSON.stringify({ rejection_reason: rejectionReason }),
+      },
     );
   }
 
   // Add these methods to your ApiService class in apiService.js
 
-// ─── WITHDRAWAL MANAGEMENT ──────────────────────────────────────────────────
+  // ─── WITHDRAWAL MANAGEMENT ──────────────────────────────────────────────────
 
-async getWithdrawals({ status_filter = null, skip = 0, limit = 20 } = {}) {
-  const params = new URLSearchParams();
-  params.append("skip", skip);
-  params.append("limit", limit);
-  if (status_filter && ["pending", "completed", "rejected"].includes(status_filter)) {
-    params.append("status_filter", status_filter);
+  async getWithdrawals({ status_filter = null, skip = 0, limit = 20 } = {}) {
+    const params = new URLSearchParams();
+    params.append("skip", skip);
+    params.append("limit", limit);
+    if (
+      status_filter &&
+      ["pending", "completed", "rejected"].includes(status_filter)
+    ) {
+      params.append("status_filter", status_filter);
+    }
+    return this.makeRequest(`/admin/withdrawals?${params.toString()}`, {
+      method: "GET",
+    });
   }
-  return this.makeRequest(`/admin/withdrawals?${params.toString()}`, {
-    method: "GET",
-  });
-}
 
-async reviewWithdrawal(withdrawal_id, { status, rejection_reason = "", reference = "" }) {
-  return this.makeRequest(`/admin/withdrawals/${withdrawal_id}/review`, {
-    method: "POST",
-    body: JSON.stringify({
-      status,
-      rejection_reason,
+  async reviewWithdrawal(
+    withdrawal_id,
+    { status, rejection_reason = "", reference = "" },
+  ) {
+    return this.makeRequest(`/admin/withdrawals/${withdrawal_id}/review`, {
+      method: "POST",
+      body: JSON.stringify({
+        status,
+        rejection_reason,
+        reference,
+      }),
+    });
+  }
+
+  async approveWithdrawal(withdrawal_id, reference = "") {
+    return this.reviewWithdrawal(withdrawal_id, {
+      status: "completed",
+      rejection_reason: "",
       reference,
-    }),
-  });
-}
+    });
+  }
 
-async approveWithdrawal(withdrawal_id, reference = "") {
-  return this.reviewWithdrawal(withdrawal_id, {
-    status: "completed",
-    rejection_reason: "",
-    reference,
-  });
-}
+  async rejectWithdrawal(withdrawal_id, rejection_reason) {
+    return this.reviewWithdrawal(withdrawal_id, {
+      status: "rejected",
+      rejection_reason,
+      reference: "",
+    });
+  }
 
-async rejectWithdrawal(withdrawal_id, rejection_reason) {
-  return this.reviewWithdrawal(withdrawal_id, {
-    status: "rejected",
-    rejection_reason,
-    reference: "",
-  });
-}
+  // ─── REPORT MANAGEMENT ────────────────────────────────────────────────────
+
+  /**
+   * Get all seller reports with optional status filter
+   * @param {string|null} status - "open", "resolved", "dismissed", or null for all
+   */
+  async getSellerReports(status = null) {
+    const params = new URLSearchParams();
+    if (status) params.append("status", status);
+    const queryString = params.toString();
+    return this.makeRequest(
+      `/admin/reports/seller${queryString ? `?${queryString}` : ""}`,
+      { method: "GET" },
+    );
+  }
+
+  /**
+   * Resolve a seller report
+   * @param {string} reportId - The report ID
+   * @param {string} status - "resolved" or "dismissed"
+   * @param {string} adminNotes - Optional admin notes
+   */
+  async resolveSellerReport(reportId, status, adminNotes = "") {
+    return this.makeRequest(`/admin/reports/seller/${reportId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status, admin_notes: adminNotes }),
+    });
+  }
+
+  /**
+   * Get all service provider reports with optional status filter
+   * @param {string|null} status - "open", "resolved", "dismissed", or null for all
+   */
+  async getProviderReports(status = null) {
+    const params = new URLSearchParams();
+    if (status) params.append("status", status);
+    const queryString = params.toString();
+    return this.makeRequest(
+      `/admin/reports/provider${queryString ? `?${queryString}` : ""}`,
+      { method: "GET" },
+    );
+  }
+
+  /**
+   * Resolve a service provider report
+   * @param {string} reportId - The report ID
+   * @param {string} status - "resolved" or "dismissed"
+   * @param {string} adminNotes - Optional admin notes
+   */
+  async resolveProviderReport(reportId, status, adminNotes = "") {
+    return this.makeRequest(`/admin/reports/provider/${reportId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status, admin_notes: adminNotes }),
+    });
+  }
+
+  /**
+   * Get all product reports with optional filters
+   * @param {string|null} status - "open", "resolved", "dismissed", or null for all
+   * @param {string|null} sellerId - Filter by seller ID
+   */
+  async getProductReports(status = null, sellerId = null) {
+    const params = new URLSearchParams();
+    if (status) params.append("status", status);
+    if (sellerId) params.append("seller_id", sellerId);
+    const queryString = params.toString();
+    return this.makeRequest(
+      `/admin/reports/product${queryString ? `?${queryString}` : ""}`,
+      { method: "GET" },
+    );
+  }
+
+  /**
+   * Resolve a product report
+   * @param {string} reportId - The report ID
+   * @param {string} status - "resolved" or "dismissed"
+   * @param {string} adminNotes - Optional admin notes
+   */
+  async resolveProductReport(reportId, status, adminNotes = "") {
+    return this.makeRequest(`/admin/reports/product/${reportId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status, admin_notes: adminNotes }),
+    });
+  }
+
+  /**
+   * Get seller report audit summary (repeat offenders)
+   */
+  async getSellerReportSummary() {
+    return this.makeRequest("/admin/reports/seller-summary", { method: "GET" });
+  }
+
+  // Add these methods to your apiService.js file inside the ApiService class
+
+  // ─── ORDER MANAGEMENT ─────────────────────────────────────────────────────────
+
+  /**
+   * Get all orders with pagination and filters
+   * @param {Object} params - Query parameters
+   * @param {string} params.order_status - Filter by order status
+   * @param {string} params.payment_status - Filter by payment status (pending, paid, failed)
+   * @param {string} params.seller_id - Filter by seller ID
+   * @param {string} params.school_id - Filter by buyer's campus (school ID)
+   * @param {string} params.start_date - Start date (YYYY-MM-DD)
+   * @param {string} params.end_date - End date (YYYY-MM-DD)
+   * @param {number} params.page - Page number (default: 1)
+   * @param {number} params.per_page - Items per page (default: 20, max: 100)
+   */
+  async getOrders(params = {}) {
+    const queryParams = new URLSearchParams();
+    if (params.order_status)
+      queryParams.append("order_status", params.order_status);
+    if (params.payment_status)
+      queryParams.append("payment_status", params.payment_status);
+    if (params.seller_id) queryParams.append("seller_id", params.seller_id);
+    if (params.school_id) queryParams.append("school_id", params.school_id);
+    if (params.start_date) queryParams.append("start_date", params.start_date);
+    if (params.end_date) queryParams.append("end_date", params.end_date);
+    if (params.page) queryParams.append("page", params.page);
+    if (params.per_page) queryParams.append("per_page", params.per_page);
+
+    const queryString = queryParams.toString();
+    return this.makeRequest(
+      `/admin/orders${queryString ? `?${queryString}` : ""}`,
+      {
+        method: "GET",
+      },
+    );
+  }
+
+  /**
+   * Get detailed order information by ID
+   * @param {string} orderId - Order ID
+   */
+  async getOrderDetail(orderId) {
+    return this.makeRequest(`/admin/orders/${orderId}`, {
+      method: "GET",
+    });
+  }
+
+  /**
+   * Confirm that seller's goods have arrived at the campus pickup station
+   * @param {string} itemId - OrderItem ID
+   */
+  async confirmItemAtStation(itemId) {
+    return this.makeRequest(`/admin/orders/items/${itemId}/station`, {
+      method: "PATCH",
+    });
+  }
+
+  /**
+   * Mark an item as delivered to the customer
+   * This releases the seller's proportional earnings from pending escrow
+   * @param {string} itemId - OrderItem ID
+   */
+  async markItemDelivered(itemId) {
+    return this.makeRequest(`/admin/orders/items/${itemId}/deliver`, {
+      method: "PATCH",
+    });
+  }
 
   // ─── LOGOUT ────────────────────────────────────────────────────────────────
 

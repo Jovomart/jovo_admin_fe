@@ -29,3 +29,23 @@
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 140, 0, 0.5);
 }
+
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+@media (min-width: 640px) {
+  .animate-slide-up {
+    animation: none;
+  }
+}

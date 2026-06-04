@@ -36,6 +36,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
       icon: <FiUsers size={18} />,
       to: "/pickup-stations",
     },
+    { label: "Report System", icon: <FiActivity size={18} />, to: "/reporting" },
     { label: "Campus Guide", icon: <FiUsers size={18} />, to: "/campus-guide" },
     { label: "Categories", icon: <FiGrid size={18} />, to: "/categories" },
     {
@@ -43,6 +44,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
       icon: <FiShoppingBag size={18} />,
       to: "/admin-products",
     },
+    { label: "Orders", icon: <FiShoppingBag size={18} />, to: "/orders" },
     { label: "Withdrawals", icon: <FiGrid size={18} />, to: "/withdrawals" },
     { label: "Delivery", icon: <FiTruck size={18} />, to: "/delivery" },
     {

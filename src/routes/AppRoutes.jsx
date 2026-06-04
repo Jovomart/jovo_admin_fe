@@ -20,6 +20,8 @@ import AdminProducts from "../pages/AdminProducts";
 import Revenue from "../pages/Revenue";
 import CampaignManagement from "../pages/CampaignManagement";
 import WithdrawalManagement from "../pages/WithdrawalManagement";
+import AdminReportingSystem from "../pages/AdminReportingSystem";
+import AdminOrderMangement from "../pages/AdminOrderManagement";
 
 const AppRoutes = () => (
   <Routes>
@@ -54,6 +56,8 @@ const AppRoutes = () => (
       <Route path="/revenue" element={<Revenue />} />
       <Route path="/campaigns" element={<CampaignManagement />} />
       <Route path="/withdrawals" element={<WithdrawalManagement />} />
+      <Route path="/reporting" element={<AdminReportingSystem />} />
+      <Route path="/orders" element={<AdminOrderMangement />} />
     </Route>
 
     <Route path="*" element={<Navigate to="/dashboard" replace />} />
