@@ -1103,6 +1103,49 @@ class ApiService {
     );
   }
 
+  // Add these methods to your ApiService class in apiService.js
+
+// ─── WITHDRAWAL MANAGEMENT ──────────────────────────────────────────────────
+
+async getWithdrawals({ status_filter = null, skip = 0, limit = 20 } = {}) {
+  const params = new URLSearchParams();
+  params.append("skip", skip);
+  params.append("limit", limit);
+  if (status_filter && ["pending", "completed", "rejected"].includes(status_filter)) {
+    params.append("status_filter", status_filter);
+  }
+  return this.makeRequest(`/admin/withdrawals?${params.toString()}`, {
+    method: "GET",
+  });
+}
+
+async reviewWithdrawal(withdrawal_id, { status, rejection_reason = "", reference = "" }) {
+  return this.makeRequest(`/admin/withdrawals/${withdrawal_id}/review`, {
+    method: "POST",
+    body: JSON.stringify({
+      status,
+      rejection_reason,
+      reference,
+    }),
+  });
+}
+
+async approveWithdrawal(withdrawal_id, reference = "") {
+  return this.reviewWithdrawal(withdrawal_id, {
+    status: "completed",
+    rejection_reason: "",
+    reference,
+  });
+}
+
+async rejectWithdrawal(withdrawal_id, rejection_reason) {
+  return this.reviewWithdrawal(withdrawal_id, {
+    status: "rejected",
+    rejection_reason,
+    reference: "",
+  });
+}
+
   // ─── LOGOUT ────────────────────────────────────────────────────────────────
 
   async logout() {

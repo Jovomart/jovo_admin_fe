@@ -43,6 +43,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
       icon: <FiShoppingBag size={18} />,
       to: "/admin-products",
     },
+    { label: "Withdrawals", icon: <FiGrid size={18} />, to: "/withdrawals" },
     { label: "Delivery", icon: <FiTruck size={18} />, to: "/delivery" },
     {
       label: "Campaigns",

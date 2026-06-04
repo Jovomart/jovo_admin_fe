@@ -19,6 +19,7 @@ import PickupStations from "../pages/PickupStations";
 import AdminProducts from "../pages/AdminProducts";
 import Revenue from "../pages/Revenue";
 import CampaignManagement from "../pages/CampaignManagement";
+import WithdrawalManagement from "../pages/WithdrawalManagement";
 
 const AppRoutes = () => (
   <Routes>
@@ -52,6 +53,7 @@ const AppRoutes = () => (
       <Route path="/admin-products" element={<AdminProducts />} />
       <Route path="/revenue" element={<Revenue />} />
       <Route path="/campaigns" element={<CampaignManagement />} />
+      <Route path="/withdrawals" element={<WithdrawalManagement />} />
     </Route>
 
     <Route path="*" element={<Navigate to="/dashboard" replace />} />
