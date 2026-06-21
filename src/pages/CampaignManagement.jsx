@@ -78,6 +78,12 @@ const STATUS_CONFIG = {
 
 const EMPTY_FORM = { title: "", start_time: "", end_time: "", is_active: true };
 
+/**
+ * An application is considered "rejected" once the backend has set
+ * status: 'rejected' (the backend reject endpoint now sets this field).
+ */
+const isRejected = (app) => app?.status === "rejected";
+
 /* ─────────────────────────────────────────────────────────────
    APPLICATION REVIEW MODAL
 ───────────────────────────────────────────────────────────── */
@@ -361,7 +367,7 @@ const ApplicationsModal = ({ applications, onClose, onApprove, onReject, actionI
                           </>
                         ) : (
                           <button
-                            onClick={() => onReject(app.id, "Revoked by admin")}
+                            onClick={() => handleRejectClick(app)}
                             disabled={busy || isLoading}
                             className="flex-1 sm:flex-none flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black transition-all hover:scale-105 active:scale-95 disabled:opacity-40 min-w-17.5 sm:min-w-20"
                             style={{
@@ -681,17 +687,10 @@ const CampaignManagement = () => {
       else if (Array.isArray(data?.applications)) appsList = data.applications;
       else if (Array.isArray(data?.data)) appsList = data.data;
 
-      // Filter to only show pending and approved applications (hide rejected)
-      const filteredApps = appsList.filter(app => {
-        if (app.status === 'rejected') return false;
-        if (app.is_approved === false && app.rejection_reason) return false;
-        return true;
-      });
-
-      console.log("📊 Applications - Original:", appsList.length, "Filtered:", filteredApps.length);
-      if (appsList.length > filteredApps.length) {
-        console.log(`🔍 Hidden ${appsList.length - filteredApps.length} rejected applications`);
-      }
+      // Hide rejected applications from the default pending/approved view.
+      // The backend now sets status: 'rejected' on the reject endpoint,
+      // so we can filter on that real field.
+      const filteredApps = appsList.filter((app) => !isRejected(app));
 
       setApplications(filteredApps);
     } catch (err) {
@@ -759,10 +758,7 @@ const CampaignManagement = () => {
     }
   };
 
-  // ✅ FIXED: rejection reason is now passed to the API, and no race condition
   const handleReject = async (applicationId, rejectionReason = "") => {
-    console.log("🚫 handleReject called with:", { applicationId, rejectionReason });
-
     setActionId(applicationId);
 
     try {
@@ -773,11 +769,10 @@ const CampaignManagement = () => {
           : "Application rejected successfully!"
       );
 
-      // fetchApplications already filters out rejected items, so the
-      // modal list will update correctly after this single refresh
+      // fetchApplications now filters out status: 'rejected' items,
+      // so the modal list updates correctly after this single refresh
       await fetchApplications();
 
-      // Trigger a re-render of the modal with the refreshed applications
       if (appsModal) {
         setAppsModal((prev) => ({ ...prev }));
       }
@@ -795,11 +790,9 @@ const CampaignManagement = () => {
 
   const getCampaignApplications = (campaign) => {
     if (!campaign || Object.keys(campaign).length === 0) return applications;
-    return applications.filter((app) => {
-      const matchesCampaign = app.flash_sale_id === campaign.id || app.campaign_id === campaign.id;
-      const isNotRejected = app.status !== 'rejected' && !(app.is_approved === false && app.rejection_reason);
-      return matchesCampaign && isNotRejected;
-    });
+    return applications.filter(
+      (app) => app.flash_sale_id === campaign.id || app.campaign_id === campaign.id
+    );
   };
 
   const now = Date.now();

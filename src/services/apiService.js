@@ -1102,7 +1102,7 @@ class ApiService {
    * Reject a seller's flash sale application.
    * @param {string} applicationId
    */
-  async rejectFlashSaleApplication(applicationId, rejectionReason = "") {
+ async rejectFlashSaleApplication(applicationId, rejectionReason = "") {
     return this.makeRequest(
       `/admin/campaigns/flash-sale/applications/${applicationId}/reject`,
       {
