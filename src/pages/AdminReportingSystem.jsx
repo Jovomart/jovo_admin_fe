@@ -28,6 +28,7 @@ import {
   FiCalendar,
   FiMail,
   FiPhone,
+  FiImage,
 } from "react-icons/fi";
 import { MdWarning, MdReportProblem } from "react-icons/md";
 
@@ -39,6 +40,7 @@ const REPORT_STATUS = {
   open: { label: "Open", color: "#EF4444", bg: "rgba(239,68,68,0.1)", icon: FiAlertCircle },
   resolved: { label: "Resolved", color: "#10B981", bg: "rgba(16,185,129,0.1)", icon: FiCheckCircle },
   dismissed: { label: "Dismissed", color: "#6B7280", bg: "rgba(107,114,128,0.1)", icon: FiXCircle },
+  pending: { label: "Pending", color: "#F59E0B", bg: "rgba(245,158,11,0.1)", icon: FiAlertCircle },
 };
 
 const REPORT_TYPES = {
@@ -49,33 +51,45 @@ const REPORT_TYPES = {
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  } catch {
+    return "N/A";
+  }
 };
 
 const getRelativeTime = (dateString) => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
+  if (!dateString) return "N/A";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return formatDate(dateString);
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return formatDate(dateString);
+  } catch {
+    return "N/A";
+  }
 };
 
 const truncateText = (text, maxLength = 120) => {
   if (!text) return "";
+  if (typeof text !== "string") return String(text);
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength) + "...";
 };
@@ -111,9 +125,11 @@ const StatsCard = ({ title, value, icon: Icon, color, onClick, active }) => (
    REPORT CARD COMPONENT (Mobile Optimized)
 ───────────────────────────────────────────────────────────── */
 const ReportCard = ({ report, type, onResolve, onDismiss, onViewDetails, actionLoading }) => {
-  const status = REPORT_STATUS[report.status] || REPORT_STATUS.open;
+  // Normalize status - API uses "pending" for product reports
+  const statusKey = report.status === "pending" ? "open" : report.status;
+  const status = REPORT_STATUS[statusKey] || REPORT_STATUS.open;
   const StatusIcon = status.icon;
-  const isOpen = report.status === "open";
+  const isOpen = report.status === "open" || report.status === "pending";
   const isLoading = actionLoading === report.id;
 
   const renderReportContent = () => {
@@ -163,27 +179,34 @@ const ReportCard = ({ report, type, onResolve, onDismiss, onViewDetails, actionL
           </div>
         );
       case "product":
+        // Handle flat product report structure from API
+        const productName = report.product_name || report.product?.name || "Unknown Product";
+        const productPrice = report.product?.price || report.price || null;
+        // The API doesn't provide seller info in product reports
+        // We'll show the product_id as a reference
+        const sellerInfo = report.seller_name || "Seller info not available";
+        
         return (
           <div className="space-y-1.5">
             <div className="flex items-center gap-1.5">
               <FiPackage size={12} className="text-white/40 shrink-0" />
               <span className="text-xs sm:text-sm text-white/80 font-medium truncate">
-                {report.product?.name || "Unknown Product"}
+                {productName}
               </span>
             </div>
-            {report.product?.price && (
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              {productPrice && (
                 <span className="text-[10px] sm:text-xs text-white/40">
-                  ₦{report.product.price.toLocaleString()}
+                  ₦{typeof productPrice === 'number' ? productPrice.toLocaleString() : productPrice}
                 </span>
-                <span className="text-white/20 text-[8px] sm:text-[9px]">•</span>
-                <span className="text-[10px] sm:text-xs text-white/40 truncate">
-                  Seller: {report.seller?.business_name || "Unknown"}
-                </span>
-              </div>
-            )}
+              )}
+              <span className="text-white/20 text-[8px] sm:text-[9px]">•</span>
+              <span className="text-[10px] sm:text-xs text-white/40 truncate">
+                Product ID: {report.product_id || "N/A"}
+              </span>
+            </div>
             <p className="text-xs sm:text-sm text-white/60 mt-2 border-l-2 border-amber-500/30 pl-2 leading-relaxed">
-              {truncateText(report.reason, 120)}
+              {truncateText(report.details || report.reason, 120)}
             </p>
           </div>
         );
@@ -219,12 +242,17 @@ const ReportCard = ({ report, type, onResolve, onDismiss, onViewDetails, actionL
                   className="text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full whitespace-nowrap"
                   style={{ background: status.bg, color: status.color }}
                 >
-                  {status.label}
+                  {report.status === "pending" ? "Open" : status.label}
                 </span>
                 <span className="text-[9px] sm:text-[10px] text-white/30 flex items-center gap-0.5">
                   <FiClock size={8} />
                   {getRelativeTime(report.created_at)}
                 </span>
+                {report.pending_reports_count > 1 && (
+                  <span className="text-[8px] sm:text-[9px] text-white/20 bg-white/5 px-1.5 py-0.5 rounded-full">
+                    {report.pending_reports_count} reports
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -240,17 +268,17 @@ const ReportCard = ({ report, type, onResolve, onDismiss, onViewDetails, actionL
         {/* Report Content */}
         {renderReportContent()}
 
-        {/* Reporter Info */}
-        {report.reporter && (
+        {/* Reporter Info - handle both nested and flat structures */}
+        {(report.reporter || report.reporter_id) && (
           <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center gap-1.5 text-[9px] sm:text-[10px] text-white/30">
             <FiFlag size={8} />
             <span className="truncate">
-              Reported by: {report.reporter.email || report.reporter.username || "Anonymous"}
+              Reported by: {report.reporter?.email || report.reporter?.username || report.reporter_id || "Anonymous"}
             </span>
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* Action Buttons - Show for open/pending reports */}
         {isOpen && (
           <div className="mt-3 flex gap-2">
             <button
@@ -300,9 +328,11 @@ const ReportCard = ({ report, type, onResolve, onDismiss, onViewDetails, actionL
 const ReportDetailModal = ({ report, type, onClose, onResolve, onDismiss, actionLoading }) => {
   if (!report) return null;
 
-  const status = REPORT_STATUS[report.status] || REPORT_STATUS.open;
+  // Normalize status
+  const statusKey = report.status === "pending" ? "open" : report.status;
+  const status = REPORT_STATUS[statusKey] || REPORT_STATUS.open;
   const StatusIcon = status.icon;
-  const isOpen = report.status === "open";
+  const isOpen = report.status === "open" || report.status === "pending";
   const isLoading = actionLoading === report.id;
 
   const renderDetailedContent = () => {
@@ -318,9 +348,11 @@ const ReportDetailModal = ({ report, type, onClose, onResolve, onDismiss, action
                 <p className="text-xs sm:text-sm font-medium text-white wrap-break-word">
                   {report.seller?.business_name || "N/A"}
                 </p>
-                <p className="text-[10px] sm:text-xs text-white/40 mt-1 wrap-break-word">
-                  {report.seller?.email || "No email"}
-                </p>
+                {report.seller?.email && (
+                  <p className="text-[10px] sm:text-xs text-white/40 mt-1 wrap-break-word">
+                    {report.seller.email}
+                  </p>
+                )}
               </div>
               <div className="bg-white/5 rounded-lg p-3">
                 <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white/30 mb-1">
@@ -398,6 +430,15 @@ const ReportDetailModal = ({ report, type, onClose, onResolve, onDismiss, action
           </div>
         );
       case "product":
+        // Handle flat product report structure
+        const productName = report.product_name || report.product?.name || "Unknown Product";
+        const productPrice = report.product?.price || report.price || null;
+        const reason = report.reason || "No reason provided";
+        const details = report.details || "";
+        const isPriority = report.is_priority || false;
+        const images = report.images || [];
+        const hasImages = images && Array.isArray(images) && images.length > 0;
+        
         return (
           <div className="space-y-3 sm:space-y-4">
             <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3">
@@ -406,31 +447,70 @@ const ReportDetailModal = ({ report, type, onClose, onResolve, onDismiss, action
                   Product Info
                 </p>
                 <p className="text-xs sm:text-sm font-medium text-white wrap-break-word">
-                  {report.product?.name || "N/A"}
+                  {productName}
                 </p>
-                <p className="text-[10px] sm:text-xs text-white/40 mt-1 wrap-break-word">
-                  ₦{report.product?.price?.toLocaleString() || "N/A"}
+                {productPrice && (
+                  <p className="text-[10px] sm:text-xs text-white/40 mt-1 wrap-break-word">
+                    ₦{typeof productPrice === 'number' ? productPrice.toLocaleString() : productPrice}
+                  </p>
+                )}
+                {isPriority && (
+                  <span className="inline-block mt-1 text-[8px] sm:text-[9px] font-black text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded-full">
+                    Priority
+                  </span>
+                )}
+                <p className="text-[8px] sm:text-[9px] text-white/30 mt-1 wrap-break-word">
+                  Product ID: {report.product_id || "N/A"}
                 </p>
               </div>
               <div className="bg-white/5 rounded-lg p-3">
                 <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white/30 mb-1">
-                  Seller
-                </p>
-                <p className="text-[10px] sm:text-xs text-white/60 wrap-break-word">
-                  {report.seller?.business_name || "Unknown"}
+                  Report Details
                 </p>
                 <p className="text-[9px] sm:text-[10px] text-white/40 mt-1 wrap-break-word">
-                  {report.seller?.email || "No email"}
+                  Reporter ID: {report.reporter_id || "N/A"}
                 </p>
+                {report.pending_reports_count > 0 && (
+                  <p className="text-[9px] sm:text-[10px] text-amber-400/60 mt-1 wrap-break-word">
+                    Pending reports: {report.pending_reports_count}
+                  </p>
+                )}
               </div>
             </div>
+            
+            {hasImages && (
+              <div className="bg-white/5 rounded-lg p-3">
+                <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white/30 mb-2">
+                  Images ({images.length})
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {images.slice(0, 3).map((img, idx) => (
+                    <div key={idx} className="aspect-square rounded-lg bg-white/5 overflow-hidden">
+                      {img ? (
+                        <img src={img} alt={`Evidence ${idx + 1}`} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-white/20">
+                          <FiImage size={20} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 sm:p-4">
               <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-amber-400 mb-2">
-                Report Reason
+                Report Details
               </p>
               <p className="text-xs sm:text-sm text-white/80 leading-relaxed wrap-break-word">
-                {report.reason}
+                <span className="font-bold text-amber-400/60">Reason:</span> {reason}
               </p>
+              {details && details !== reason && (
+                <p className="text-xs sm:text-sm text-white/60 leading-relaxed wrap-break-word mt-2 border-t border-amber-500/10 pt-2">
+                  <span className="font-bold text-amber-400/60">Additional Details:</span> {details}
+                </p>
+              )}
             </div>
           </div>
         );
@@ -469,7 +549,7 @@ const ReportDetailModal = ({ report, type, onClose, onResolve, onDismiss, action
                 Report Details
               </h3>
               <p className="text-[10px] sm:text-xs text-white/30 truncate">
-                {type.toUpperCase()} • {status.label}
+                {type.toUpperCase()} • {report.status === "pending" ? "Open" : status.label}
               </p>
             </div>
           </div>
@@ -523,7 +603,7 @@ const ReportDetailModal = ({ report, type, onClose, onResolve, onDismiss, action
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Actions - Show for open/pending reports */}
         {isOpen && (
           <div
             className="flex gap-2 sm:gap-3 px-4 py-3 sm:px-6 sm:py-4 border-t shrink-0 sticky bottom-0 bg-[#0d0d14]"
@@ -570,12 +650,35 @@ const ReportDetailModal = ({ report, type, onClose, onResolve, onDismiss, action
 /* ─────────────────────────────────────────────────────────────
    AUDIT SUMMARY COMPONENT (Mobile Optimized)
 ───────────────────────────────────────────────────────────── */
-const AuditSummary = ({ summary, onViewSellerReports }) => {
+const AuditSummary = ({ summary, onViewSellerReports, loading }) => {
+  if (loading) {
+    return (
+      <div className="rounded-xl p-6 text-center border" style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.05)" }}>
+        <FiLoader size="24" className="text-white/20 animate-spin mx-auto mb-2" />
+        <p className="text-xs sm:text-sm text-white/30">Loading summary...</p>
+      </div>
+    );
+  }
+
   if (!summary || summary.length === 0) {
     return (
       <div className="rounded-xl p-6 text-center border" style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.05)" }}>
         <FiShield size="28" className="text-white/10 mx-auto mb-2" />
         <p className="text-xs sm:text-sm text-white/30">No repeat offender data available</p>
+      </div>
+    );
+  }
+
+  // Filter out sellers with zero reports and sort by total_reports_count descending
+  const sortedSummary = [...summary]
+    .filter(seller => seller.total_reports_count > 0)
+    .sort((a, b) => (b.total_reports_count || 0) - (a.total_reports_count || 0));
+
+  if (sortedSummary.length === 0) {
+    return (
+      <div className="rounded-xl p-6 text-center border" style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.05)" }}>
+        <FiShield size="28" className="text-white/10 mx-auto mb-2" />
+        <p className="text-xs sm:text-sm text-white/30">No repeat offenders found</p>
       </div>
     );
   }
@@ -587,10 +690,10 @@ const AuditSummary = ({ summary, onViewSellerReports }) => {
           <FiBarChart2 size={12} className="text-[#FF8C00]" />
           Repeat Offenders Summary
         </h3>
-        <span className="text-[8px] sm:text-[9px] text-white/30">{summary.length} sellers with reports</span>
+        <span className="text-[8px] sm:text-[9px] text-white/30">{sortedSummary.length} sellers with reports</span>
       </div>
       <div className="space-y-1.5">
-        {summary.slice(0, 5).map((seller, idx) => (
+        {sortedSummary.slice(0, 5).map((seller, idx) => (
           <div
             key={seller.seller_id || idx}
             className="flex items-center justify-between p-2.5 sm:p-3 rounded-lg cursor-pointer transition-all active:scale-[0.99] hover:bg-white/5"
@@ -599,15 +702,13 @@ const AuditSummary = ({ summary, onViewSellerReports }) => {
           >
             <div className="flex-1 min-w-0">
               <p className="text-xs sm:text-sm font-medium text-white truncate">
-                {seller.seller_business_name || seller.seller_name || "Unknown Seller"}
+                {seller.business_name || seller.seller_name || "Unknown Seller"}
               </p>
-              <p className="text-[8px] sm:text-[9px] text-white/30 truncate">
-                {seller.seller_email || "No email"}
-              </p>
+              {/* Only show email if it exists - removed "No email" */}
             </div>
             <div className="text-right ml-2 shrink-0">
-              <p className="text-base sm:text-lg font-black" style={{ color: seller.total_reports > 3 ? "#EF4444" : "#F59E0B" }}>
-                {seller.total_reports}
+              <p className="text-base sm:text-lg font-black" style={{ color: (seller.total_reports_count || 0) > 3 ? "#EF4444" : "#F59E0B" }}>
+                {seller.total_reports_count || 0}
               </p>
               <p className="text-[7px] sm:text-[8px] text-white/30">reports</p>
             </div>
@@ -626,22 +727,31 @@ const AdminReportingSystem = () => {
   const [reports, setReports] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReport, setSelectedReport] = useState(null);
   const [toast, setToast] = useState(null);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8; // Reduced for mobile
+  const itemsPerPage = 8;
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
+
+  // Calculate stats from reports data
+  const calculateStats = useCallback((reportsData) => {
+    const total = reportsData.length;
+    const open = reportsData.filter(r => r.status === "open" || r.status === "pending").length;
+    const resolved = reportsData.filter(r => r.status === "resolved").length;
+    const dismissed = reportsData.filter(r => r.status === "dismissed").length;
+    return { total, open, resolved, dismissed };
+  }, []);
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
@@ -664,24 +774,68 @@ const AdminReportingSystem = () => {
           response = { data: [] };
       }
       
-      const reportsData = response?.data || response || [];
-      setReports(Array.isArray(reportsData) ? reportsData : []);
+      console.log(`📊 ${activeTab} reports response:`, response);
+      
+      // Handle response properly - the API returns data in response.data
+      let reportsData = [];
+      if (response?.data && Array.isArray(response.data)) {
+        reportsData = response.data;
+      } else if (Array.isArray(response)) {
+        reportsData = response;
+      } else if (response?.reports && Array.isArray(response.reports)) {
+        reportsData = response.reports;
+      } else if (response?.items && Array.isArray(response.items)) {
+        reportsData = response.items;
+      } else {
+        // Try to extract any array from the response
+        const possibleArrays = Object.values(response || {}).filter(val => Array.isArray(val));
+        if (possibleArrays.length > 0) {
+          reportsData = possibleArrays[0];
+        } else {
+          reportsData = [];
+        }
+      }
+      
+      console.log(`📊 Processed ${reportsData.length} reports for ${activeTab}`);
+      setReports(reportsData);
     } catch (err) {
       console.error("fetchReports error:", err);
       setError(err.message || "Failed to load reports");
+      setReports([]);
     } finally {
       setLoading(false);
     }
   }, [activeTab, statusFilter]);
 
   const fetchSummary = useCallback(async () => {
+    setSummaryLoading(true);
     try {
       const response = await ApiService.getSellerReportSummary();
-      const summaryData = response?.data || response;
-      setSummary(Array.isArray(summaryData) ? summaryData : []);
+      console.log("📊 Summary response:", response);
+      
+      // Handle response - API returns data in response.data
+      let summaryData = [];
+      if (response?.data && Array.isArray(response.data)) {
+        summaryData = response.data;
+      } else if (Array.isArray(response)) {
+        summaryData = response;
+      } else if (response?.summary && Array.isArray(response.summary)) {
+        summaryData = response.summary;
+      } else {
+        const possibleArrays = Object.values(response || {}).filter(val => Array.isArray(val));
+        if (possibleArrays.length > 0) {
+          summaryData = possibleArrays[0];
+        } else {
+          summaryData = [];
+        }
+      }
+      
+      setSummary(summaryData);
     } catch (err) {
       console.error("fetchSummary error:", err);
       setSummary([]);
+    } finally {
+      setSummaryLoading(false);
     }
   }, []);
 
@@ -693,23 +847,37 @@ const AdminReportingSystem = () => {
   }, [fetchReports, fetchSummary, activeTab]);
 
   const handleResolve = async (report) => {
+    if (!report?.id) {
+      showToast("Invalid report ID", "error");
+      return;
+    }
+    
     setActionLoading(report.id);
     try {
+      let result;
+      const status = "resolved";
+      const adminNotes = "Resolved by admin";
+      
       switch (activeTab) {
         case "seller":
-          await ApiService.resolveSellerReport(report.id, "resolved", "Resolved by admin");
+          result = await ApiService.resolveSellerReport(report.id, status, adminNotes);
           break;
         case "provider":
-          await ApiService.resolveProviderReport(report.id, "resolved", "Resolved by admin");
+          result = await ApiService.resolveProviderReport(report.id, status, adminNotes);
           break;
         case "product":
-          await ApiService.resolveProductReport(report.id, "resolved", "Resolved by admin");
+          result = await ApiService.resolveProductReport(report.id, status, adminNotes);
           break;
+        default:
+          throw new Error("Invalid report type");
       }
+      
+      console.log(`✅ ${activeTab} report resolved:`, result);
       showToast("Report resolved successfully!");
       await fetchReports();
       if (activeTab === "seller") await fetchSummary();
     } catch (err) {
+      console.error("Resolve error:", err);
       showToast(err.message || "Failed to resolve report", "error");
     } finally {
       setActionLoading(null);
@@ -718,23 +886,37 @@ const AdminReportingSystem = () => {
   };
 
   const handleDismiss = async (report) => {
+    if (!report?.id) {
+      showToast("Invalid report ID", "error");
+      return;
+    }
+    
     setActionLoading(report.id);
     try {
+      let result;
+      const status = "dismissed";
+      const adminNotes = "Dismissed by admin";
+      
       switch (activeTab) {
         case "seller":
-          await ApiService.resolveSellerReport(report.id, "dismissed", "Dismissed by admin");
+          result = await ApiService.resolveSellerReport(report.id, status, adminNotes);
           break;
         case "provider":
-          await ApiService.resolveProviderReport(report.id, "dismissed", "Dismissed by admin");
+          result = await ApiService.resolveProviderReport(report.id, status, adminNotes);
           break;
         case "product":
-          await ApiService.resolveProductReport(report.id, "dismissed", "Dismissed by admin");
+          result = await ApiService.resolveProductReport(report.id, status, adminNotes);
           break;
+        default:
+          throw new Error("Invalid report type");
       }
+      
+      console.log(`✅ ${activeTab} report dismissed:`, result);
       showToast("Report dismissed!");
       await fetchReports();
       if (activeTab === "seller") await fetchSummary();
     } catch (err) {
+      console.error("Dismiss error:", err);
       showToast(err.message || "Failed to dismiss report", "error");
     } finally {
       setActionLoading(null);
@@ -743,8 +925,14 @@ const AdminReportingSystem = () => {
   };
 
   const handleViewSellerReports = (sellerId) => {
+    if (!sellerId) {
+      showToast("Invalid seller ID", "error");
+      return;
+    }
     setActiveTab("product");
-    showToast(`Viewing products for seller ID: ${sellerId}`, "info");
+    setSearchTerm(""); // Clear search
+    // Show a toast to indicate what happened
+    showToast(`Viewing product reports for seller`, "info");
   };
 
   const filteredReports = reports.filter(report => {
@@ -753,16 +941,20 @@ const AdminReportingSystem = () => {
     
     switch (activeTab) {
       case "seller":
-        return report.seller?.business_name?.toLowerCase().includes(searchLower) ||
-               report.seller?.email?.toLowerCase().includes(searchLower) ||
-               report.reason?.toLowerCase().includes(searchLower);
+        return (report.seller?.business_name?.toLowerCase().includes(searchLower) ||
+                report.seller?.email?.toLowerCase().includes(searchLower) ||
+                report.reason?.toLowerCase().includes(searchLower) ||
+                report.seller?.full_name?.toLowerCase().includes(searchLower));
       case "provider":
-        return report.provider?.business_name?.toLowerCase().includes(searchLower) ||
-               report.reason?.toLowerCase().includes(searchLower);
+        return (report.provider?.business_name?.toLowerCase().includes(searchLower) ||
+                report.reason?.toLowerCase().includes(searchLower) ||
+                report.provider?.name?.toLowerCase().includes(searchLower));
       case "product":
-        return report.product?.name?.toLowerCase().includes(searchLower) ||
-               report.seller?.business_name?.toLowerCase().includes(searchLower) ||
-               report.reason?.toLowerCase().includes(searchLower);
+        // Search in flat product structure
+        return (report.product_name?.toLowerCase().includes(searchLower) ||
+                report.reason?.toLowerCase().includes(searchLower) ||
+                report.details?.toLowerCase().includes(searchLower) ||
+                report.product_id?.toLowerCase().includes(searchLower));
       default:
         return true;
     }
@@ -774,18 +966,19 @@ const AdminReportingSystem = () => {
   );
   const totalPages = Math.ceil(filteredReports.length / itemsPerPage);
 
-  const stats = {
-    total: reports.length,
-    open: reports.filter(r => r.status === "open").length,
-    resolved: reports.filter(r => r.status === "resolved").length,
-    dismissed: reports.filter(r => r.status === "dismissed").length,
-  };
+  // Calculate stats from actual reports data
+  const stats = calculateStats(reports);
 
   const clearFilters = () => {
     setStatusFilter("all");
     setSearchTerm("");
     setCurrentPage(1);
   };
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, searchTerm, activeTab]);
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto px-3 sm:px-4 pb-6 sm:pb-8">
@@ -836,7 +1029,10 @@ const AdminReportingSystem = () => {
           </p>
         </div>
         <button
-          onClick={() => { fetchReports(); fetchSummary(); }}
+          onClick={() => { 
+            fetchReports(); 
+            if (activeTab === "seller") fetchSummary(); 
+          }}
           disabled={loading}
           className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-white/50 hover:text-white transition-all active:scale-95 disabled:opacity-40 w-full xs:w-auto"
           style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
@@ -880,7 +1076,12 @@ const AdminReportingSystem = () => {
           {Object.entries(REPORT_TYPES).map(([key, { label, icon: Icon, color }]) => (
             <button
               key={key}
-              onClick={() => { setActiveTab(key); setCurrentPage(1); setStatusFilter("all"); }}
+              onClick={() => { 
+                setActiveTab(key); 
+                setCurrentPage(1); 
+                setStatusFilter("all");
+                setSearchTerm("");
+              }}
               className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-t-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                 activeTab === key
                   ? "text-white"
@@ -926,6 +1127,7 @@ const AdminReportingSystem = () => {
           >
             <option value="all" style={{ backgroundColor: "#1a1a24", color: "white" }}>All Status</option>
             <option value="open" style={{ backgroundColor: "#1a1a24", color: "white" }}>Open</option>
+            <option value="pending" style={{ backgroundColor: "#1a1a24", color: "white" }}>Pending</option>
             <option value="resolved" style={{ backgroundColor: "#1a1a24", color: "white" }}>Resolved</option>
             <option value="dismissed" style={{ backgroundColor: "#1a1a24", color: "white" }}>Dismissed</option>
           </select>
@@ -943,9 +1145,13 @@ const AdminReportingSystem = () => {
       </div>
 
       {/* Audit Summary (only for seller tab) */}
-      {activeTab === "seller" && summary && summary.length > 0 && (
+      {activeTab === "seller" && (
         <div className="rounded-xl p-3 sm:p-4 border" style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.05)" }}>
-          <AuditSummary summary={summary} onViewSellerReports={handleViewSellerReports} />
+          <AuditSummary 
+            summary={summary} 
+            onViewSellerReports={handleViewSellerReports} 
+            loading={summaryLoading}
+          />
         </div>
       )}
 
@@ -954,6 +1160,9 @@ const AdminReportingSystem = () => {
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
           <FiAlertCircle size={12} className="text-red-400 shrink-0" />
           <p className="text-red-400 text-xs">{error}</p>
+          <button onClick={() => setError("")} className="text-red-400/50 hover:text-red-400 ml-auto">
+            <FiXCircle size={12} />
+          </button>
         </div>
       )}
 
@@ -969,7 +1178,7 @@ const AdminReportingSystem = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             {paginatedReports.map((report) => (
               <ReportCard
-                key={report.id}
+                key={report.id || report._id || Math.random()}
                 report={report}
                 type={activeTab}
                 onResolve={handleResolve}
