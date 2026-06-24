@@ -1,7 +1,8 @@
 // src/components/Sidebar.jsx
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import ApiService from "../services/apiService";
 import logo from "../assets/images/logo.png";
 import {
   FiGrid,
@@ -18,9 +19,80 @@ import {
 import { MdStorefront, MdOutlineSchool } from "react-icons/md";
 
 const Sidebar = ({ mobileOpen, onClose }) => {
-  const { admin, logout } = useContext(AuthContext);
+  const { admin, setAdmin, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
+  const [profile, setProfile] = useState(null);
+  const [displayName, setDisplayName] = useState("Admin");
+  const [initials, setInitials] = useState("AD");
+  const [profileImage, setProfileImage] = useState(null);
+
+  // Function to update profile data
+  const updateProfileData = (userData) => {
+    const name = userData?.full_name || 
+                 userData?.username || 
+                 userData?.first_name || 
+                 "Admin";
+    setDisplayName(name);
+    
+    const initialLetters = name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+    setInitials(initialLetters);
+    
+    setProfileImage(userData?.profile_image || null);
+  };
+
+  // Fetch fresh profile data
+  const fetchProfile = async () => {
+    try {
+      const response = await ApiService.getAdminProfile();
+      const userData = response?.data || response;
+      setProfile(userData);
+      updateProfileData(userData);
+      if (setAdmin) {
+        setAdmin(userData);
+      }
+      localStorage.setItem("admin_user", JSON.stringify(userData));
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
+    }
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  // Listen for profile updates from other components
+  useEffect(() => {
+    const handleProfileUpdate = (event) => {
+      if (event.detail?.user) {
+        const userData = event.detail.user;
+        setProfile(userData);
+        updateProfileData(userData);
+        if (setAdmin) {
+          setAdmin(userData);
+        }
+      }
+    };
+    
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, [setAdmin]);
+
+  // Also check for changes in admin context
+  useEffect(() => {
+    if (admin) {
+      updateProfileData(admin);
+    }
+  }, [admin]);
 
   // Super Admin check
   const isSuperAdmin = admin?.email === "voltsourceinnovations@gmail.com";
@@ -72,15 +144,6 @@ const Sidebar = ({ mobileOpen, onClose }) => {
   const navItems = isSuperAdmin
     ? [...baseNavItems, ...superAdminItems]
     : baseNavItems;
-
-  const displayName =
-    admin?.full_name || admin?.username || admin?.first_name || "Admin";
-  const initials = displayName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 
   const handleLogout = () => {
     logout();
@@ -166,10 +229,23 @@ const Sidebar = ({ mobileOpen, onClose }) => {
       <div className="px-3 pb-4 border-t border-white/5 pt-4 shrink-0">
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/3 mb-2">
           <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0"
-            style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0 overflow-hidden"
+            style={{
+              background: profileImage ? "transparent" : "linear-gradient(135deg,#B42225,#FF8C00)",
+            }}
           >
-            {initials}
+            {profileImage ? (
+              <img 
+                src={profileImage} 
+                alt={displayName} 
+                className="w-full h-full object-cover"
+                onError={() => {
+                  setProfileImage(null);
+                }}
+              />
+            ) : (
+              initials
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-white/80 truncate">

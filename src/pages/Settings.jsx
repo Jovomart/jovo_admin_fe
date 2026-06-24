@@ -13,10 +13,11 @@ import {
   FiEdit2,
   FiSave,
   FiX,
+  FiCamera,
+  FiTrash2,
 } from "react-icons/fi";
 import { AuthContext } from "../context/AuthContext";
 import ApiService from "../services/apiService";
-import logo from "../assets/images/logo.png";
 
 const inputCls = (err) =>
   `flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-all duration-200 ${
@@ -36,13 +37,137 @@ const ProfileEditModal = ({ profile, onClose, onSave, loading }) => {
     state: profile?.state || "",
     city: profile?.city || "",
     address: profile?.address || "",
+    profile_image: profile?.profile_image || null,
   });
   const [errors, setErrors] = useState({});
   const [saveLoading, setSaveLoading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(profile?.profile_image || null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const handleChange = (field, value) => {
     setForm({ ...form, [field]: value });
     setErrors({ ...errors, [field]: "" });
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setErrors({ image: "Please upload an image file" });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors({ image: "Image must be less than 5MB" });
+      return;
+    }
+
+    setImageUploading(true);
+    setErrors({});
+
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+
+      const formData = new FormData();
+      formData.append("files", file);
+      formData.append("upload_type", "user_profile_image");
+      formData.append("entity_id", profile?.user_id || "");
+
+      const response = await ApiService.makeRequest("/upload/files", {
+        method: "POST",
+        body: formData,
+      });
+
+      const uploadedData = response?.data || response;
+      
+      let imageUrl = null;
+      if (uploadedData?.urls && Array.isArray(uploadedData.urls)) {
+        imageUrl = uploadedData.urls[0];
+      } else if (uploadedData?.file_url) {
+        imageUrl = uploadedData.file_url;
+      } else if (uploadedData?.secure_url) {
+        imageUrl = uploadedData.secure_url;
+      } else if (uploadedData?.data && Array.isArray(uploadedData.data)) {
+        imageUrl = uploadedData.data[0]?.url || uploadedData.data[0]?.file_url;
+      } else if (typeof uploadedData === 'string') {
+        imageUrl = uploadedData;
+      }
+
+      if (imageUrl) {
+        setForm({ ...form, profile_image: imageUrl });
+        setImagePreview(imageUrl);
+        
+        // Update the profile in parent
+        const updatedProfile = { ...profile, profile_image: imageUrl };
+        if (onSave) {
+          await onSave(updatedProfile);
+        }
+        
+        // Dispatch event for Topbar and Sidebar
+        window.dispatchEvent(new CustomEvent('profileUpdated', { 
+          detail: { user: updatedProfile } 
+        }));
+        
+        showToast("Profile image uploaded successfully!");
+      } else {
+        throw new Error("Could not get image URL from server");
+      }
+    } catch (err) {
+      console.error("Image upload error:", err);
+      setErrors({ image: err.message || "Failed to upload image" });
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (!form.profile_image) return;
+
+    if (!window.confirm("Remove your profile image?")) return;
+
+    setImageUploading(true);
+    try {
+      await ApiService.makeRequest("/upload/delete-file", {
+        method: "DELETE",
+        body: JSON.stringify({
+          file_url: form.profile_image,
+          entity_id: profile?.user_id || "",
+          upload_type: "user_profile_image",
+        }),
+      });
+
+      setForm({ ...form, profile_image: null });
+      setImagePreview(null);
+      
+      // Update the profile in parent
+      const updatedProfile = { ...profile, profile_image: null };
+      if (onSave) {
+        await onSave(updatedProfile);
+      }
+      
+      // Dispatch event for Topbar and Sidebar
+      window.dispatchEvent(new CustomEvent('profileUpdated', { 
+        detail: { user: updatedProfile } 
+      }));
+      
+      showToast("Profile image removed successfully!");
+    } catch (err) {
+      console.error("Image deletion error:", err);
+      showToast(err.message || "Failed to remove image", "error");
+    } finally {
+      setImageUploading(false);
+    }
   };
 
   const validate = () => {
@@ -71,100 +196,258 @@ const ProfileEditModal = ({ profile, onClose, onSave, loading }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)" }}>
-      <div className="w-full max-w-lg rounded-3xl border overflow-hidden mx-4"
-        style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.08)", maxHeight: "90vh", overflowY: "auto" }}>
-        
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-          <h3 className="text-base sm:text-lg font-black text-white" style={{ fontFamily: "'Playfair Display',serif" }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-3xl border overflow-hidden mx-4"
+        style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.08)", maxHeight: "90vh", overflowY: "auto" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {toast && (
+          <div
+            className="mx-4 mt-4 flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold"
+            style={{
+              background: toast.type === "error" ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.15)",
+              border: `1px solid ${toast.type === "error" ? "rgba(239,68,68,0.3)" : "rgba(16,185,129,0.3)"}`,
+              color: toast.type === "error" ? "#EF4444" : "#10B981",
+            }}
+          >
+            {toast.type === "error" ? <FiAlertCircle size={14} /> : <FiCheck size={14} />}
+            <span className="flex-1">{toast.msg}</span>
+            <button onClick={() => setToast(null)} className="hover:opacity-70">
+              <FiX size={14} />
+            </button>
+          </div>
+        )}
+
+        <div
+          className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b"
+          style={{ borderColor: "rgba(255,255,255,0.06)" }}
+        >
+          <h3
+            className="text-base sm:text-lg font-black text-white"
+            style={{ fontFamily: "'Playfair Display',serif" }}
+          >
             Edit Profile
           </h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white">
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white"
+          >
             <FiX size={16} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
           {errors.general && (
-            <div className="flex items-center gap-2 rounded-xl px-4 py-3" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+            <div
+              className="flex items-center gap-2 rounded-xl px-4 py-3"
+              style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}
+            >
               <FiAlertCircle size={14} className="text-red-400" />
               <p className="text-red-400 text-sm">{errors.general}</p>
             </div>
           )}
 
+          {/* Profile Image Upload */}
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-2">
+              Profile Image
+            </label>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div
+                  className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-black overflow-hidden"
+                  style={{
+                    background: imagePreview ? "transparent" : "linear-gradient(135deg,#B42225,#FF8C00)",
+                    border: "2px solid rgba(255,255,255,0.1)",
+                  }}
+                >
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    (form.first_name?.[0] || "A").toUpperCase()
+                  )}
+                </div>
+                {imagePreview && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    disabled={imageUploading}
+                    className="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-colors"
+                  >
+                    <FiTrash2 size={10} />
+                  </button>
+                )}
+              </div>
+              <div className="flex-1">
+                <label
+                  className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all hover:opacity-90 ${imageUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+                  style={{
+                    background: "rgba(255,140,0,0.1)",
+                    border: "1px solid rgba(255,140,0,0.25)",
+                    color: "#FF8C00",
+                  }}
+                >
+                  {imageUploading ? (
+                    <div className="w-4 h-4 border-2 border-[#FF8C00]/30 border-t-[#FF8C00] rounded-full animate-spin" />
+                  ) : (
+                    <FiCamera size={14} />
+                  )}
+                  {imageUploading ? "Uploading..." : imagePreview ? "Change Image" : "Upload Image"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={imageUploading}
+                    className="hidden"
+                  />
+                </label>
+                <p className="text-[9px] text-white/20 mt-1">PNG, JPG, GIF up to 5MB</p>
+              </div>
+            </div>
+            {errors.image && <p className="text-xs text-red-400 mt-1">{errors.image}</p>}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">First Name *</label>
-              <input type="text" value={form.first_name} onChange={(e) => handleChange("first_name", e.target.value)}
-                className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
+                First Name *
+              </label>
+              <input
+                type="text"
+                value={form.first_name}
+                onChange={(e) => handleChange("first_name", e.target.value)}
+                className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all"
+              />
               {errors.first_name && <p className="text-xs text-red-400 mt-1">{errors.first_name}</p>}
             </div>
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Last Name *</label>
-              <input type="text" value={form.last_name} onChange={(e) => handleChange("last_name", e.target.value)}
-                className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
+                Last Name *
+              </label>
+              <input
+                type="text"
+                value={form.last_name}
+                onChange={(e) => handleChange("last_name", e.target.value)}
+                className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all"
+              />
               {errors.last_name && <p className="text-xs text-red-400 mt-1">{errors.last_name}</p>}
             </div>
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Username *</label>
+            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
+              Username *
+            </label>
             <div className="flex items-center gap-2 rounded-xl border px-4 py-2.5 border-white/10 bg-white/5 focus-within:border-[#FF8C00]/50 transition-all">
               <span className="text-white/40 text-sm font-bold">@</span>
-              <input type="text" value={form.username} onChange={(e) => handleChange("username", e.target.value.replace(/\s/g, ""))}
-                className="flex-1 text-sm text-white outline-none bg-transparent" />
+              <input
+                type="text"
+                value={form.username}
+                onChange={(e) => handleChange("username", e.target.value.replace(/\s/g, ""))}
+                className="flex-1 text-sm text-white outline-none bg-transparent"
+              />
             </div>
             {errors.username && <p className="text-xs text-red-400 mt-1">{errors.username}</p>}
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Email *</label>
-            <input type="email" value={form.email} onChange={(e) => handleChange("email", e.target.value)}
-              className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
+              Email *
+            </label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => handleChange("email", e.target.value)}
+              className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all"
+            />
             {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email}</p>}
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Phone (Optional)</label>
-            <input type="tel" value={form.phone} onChange={(e) => handleChange("phone", e.target.value)}
-              className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
+              Phone (Optional)
+            </label>
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={(e) => handleChange("phone", e.target.value)}
+              className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all"
+            />
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Country</label>
-            <input type="text" value={form.country} onChange={(e) => handleChange("country", e.target.value)}
-              className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
+              Country
+            </label>
+            <input
+              type="text"
+              value={form.country}
+              onChange={(e) => handleChange("country", e.target.value)}
+              className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">State</label>
-              <input type="text" value={form.state} onChange={(e) => handleChange("state", e.target.value)}
-                className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
+                State
+              </label>
+              <input
+                type="text"
+                value={form.state}
+                onChange={(e) => handleChange("state", e.target.value)}
+                className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all"
+              />
             </div>
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">City</label>
-              <input type="text" value={form.city} onChange={(e) => handleChange("city", e.target.value)}
-                className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all" />
+              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
+                City
+              </label>
+              <input
+                type="text"
+                value={form.city}
+                onChange={(e) => handleChange("city", e.target.value)}
+                className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all"
+              />
             </div>
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Address</label>
-            <textarea value={form.address} onChange={(e) => handleChange("address", e.target.value)} rows={2}
-              className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all resize-none" />
+            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">
+              Address
+            </label>
+            <textarea
+              value={form.address}
+              onChange={(e) => handleChange("address", e.target.value)}
+              rows={2}
+              className="w-full rounded-xl border px-4 py-2.5 text-sm text-white bg-white/5 border-white/10 focus:border-[#FF8C00]/50 outline-none transition-all resize-none"
+            />
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-4">
-            <button type="button" onClick={onClose}
-              className="order-2 sm:order-1 flex-1 py-3 rounded-xl text-sm font-bold text-white/40 bg-white/5 hover:bg-white/10 transition">
+            <button
+              type="button"
+              onClick={onClose}
+              className="order-2 sm:order-1 flex-1 py-3 rounded-xl text-sm font-bold text-white/40 bg-white/5 hover:bg-white/10 transition"
+            >
               Cancel
             </button>
-            <button type="submit" disabled={saveLoading}
+            <button
+              type="submit"
+              disabled={saveLoading}
               className="order-1 sm:order-2 flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black text-white transition-all hover:opacity-90 disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}>
-              {saveLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FiSave size={14} />}
+              style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}
+            >
+              {saveLoading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <FiSave size={14} />
+              )}
               {saveLoading ? "Saving..." : "Save Changes"}
             </button>
           </div>
@@ -183,14 +466,12 @@ const Settings = () => {
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // Fetch fresh profile data from API
   const fetchProfile = async () => {
     setProfileLoading(true);
     try {
       const response = await ApiService.getAdminProfile();
       const userData = response?.data || response;
       setProfile(userData);
-      // Update AuthContext with fresh data
       if (setAdmin) {
         setAdmin(userData);
         localStorage.setItem("admin_user", JSON.stringify(userData));
@@ -206,12 +487,13 @@ const Settings = () => {
     fetchProfile();
   }, []);
 
-  const displayName = profile?.full_name ||
+  const displayName =
+    profile?.full_name ||
     `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() ||
     profile?.username ||
     admin?.username ||
     "Admin";
-  
+
   const initials = displayName
     .split(" ")
     .map((n) => n[0])
@@ -236,8 +518,14 @@ const Settings = () => {
         setAdmin(updatedUser);
         localStorage.setItem("admin_user", JSON.stringify(updatedUser));
       }
+      
+      // Dispatch event for Topbar and Sidebar
+      window.dispatchEvent(new CustomEvent('profileUpdated', { 
+        detail: { user: updatedUser } 
+      }));
+      
       showToast("Profile updated successfully!");
-      fetchProfile(); // Refresh to be safe
+      fetchProfile();
     } catch (err) {
       throw new Error(err.message || "Failed to update profile");
     }
@@ -278,8 +566,7 @@ const Settings = () => {
     if (pwStep === 2) {
       const e = {};
       if (!pwForm.code.trim()) e.code = "Code is required";
-      if (!pwForm.currentPassword)
-        e.currentPassword = "Current password is required";
+      if (!pwForm.currentPassword) e.currentPassword = "Current password is required";
       if (Object.keys(e).length) {
         setPwErrors(e);
         return;
@@ -289,10 +576,8 @@ const Settings = () => {
     } else if (pwStep === 3) {
       const e = {};
       if (!pwForm.newPassword) e.newPassword = "Password is required";
-      else if (pwForm.newPassword.length < 8)
-        e.newPassword = "Minimum 8 characters";
-      if (!pwForm.confirmPassword)
-        e.confirmPassword = "Please confirm password";
+      else if (pwForm.newPassword.length < 8) e.newPassword = "Minimum 8 characters";
+      if (!pwForm.confirmPassword) e.confirmPassword = "Please confirm password";
       else if (pwForm.newPassword !== pwForm.confirmPassword)
         e.confirmPassword = "Passwords do not match";
       if (Object.keys(e).length) {
@@ -307,7 +592,7 @@ const Settings = () => {
           pwForm.code,
           pwForm.newPassword,
           pwForm.confirmPassword,
-          pwForm.currentPassword,
+          pwForm.currentPassword
         );
         setPwStep(1);
         setPwForm((p) => ({
@@ -354,11 +639,7 @@ const Settings = () => {
             boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
           }}
         >
-          {toast.type === "error" ? (
-            <FiAlertCircle size={15} />
-          ) : (
-            <FiCheck size={15} />
-          )}
+          {toast.type === "error" ? <FiAlertCircle size={15} /> : <FiCheck size={15} />}
           <span className="text-xs sm:text-sm">{toast.msg}</span>
         </div>
       )}
@@ -399,13 +680,23 @@ const Settings = () => {
         />
         <div className="flex items-center gap-4 sm:gap-5 relative z-10 flex-1">
           <div
-            className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-white text-base sm:text-lg font-black shrink-0"
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-white text-base sm:text-lg font-black shrink-0 overflow-hidden"
             style={{
-              background: "linear-gradient(135deg,#B42225,#FF8C00)",
+              background: currentProfile?.profile_image
+                ? "transparent"
+                : "linear-gradient(135deg,#B42225,#FF8C00)",
               boxShadow: "0 6px 20px rgba(180,34,37,0.4)",
             }}
           >
-            {initials}
+            {currentProfile?.profile_image ? (
+              <img
+                src={currentProfile.profile_image}
+                alt={displayName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              initials
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <p
@@ -414,7 +705,9 @@ const Settings = () => {
             >
               {displayName}
             </p>
-            <p className="text-xs text-white/40 truncate">{currentProfile?.email || admin?.email}</p>
+            <p className="text-xs text-white/40 truncate">
+              {currentProfile?.email || admin?.email}
+            </p>
             <span
               className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full mt-1 inline-block"
               style={{
@@ -430,7 +723,11 @@ const Settings = () => {
         <button
           onClick={() => setShowEditModal(true)}
           className="relative z-10 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 w-full sm:w-auto"
-          style={{ background: "rgba(255,140,0,0.15)", border: "1px solid rgba(255,140,0,0.25)", color: "#FF8C00" }}
+          style={{
+            background: "rgba(255,140,0,0.15)",
+            border: "1px solid rgba(255,140,0,0.25)",
+            color: "#FF8C00",
+          }}
         >
           <FiEdit2 size={12} /> Edit Profile
         </button>
@@ -449,9 +746,7 @@ const Settings = () => {
             key={key}
             onClick={() => setActiveTab(key)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black transition-all ${
-              activeTab === key
-                ? "text-white"
-                : "text-white/30 hover:text-white/60"
+              activeTab === key ? "text-white" : "text-white/30 hover:text-white/60"
             }`}
             style={
               activeTab === key
@@ -491,10 +786,10 @@ const Settings = () => {
               <FiEdit2 size={11} /> Edit
             </button>
           </div>
-          
+
           {profileLoading ? (
             <div className="space-y-3">
-              {[1,2,3,4,5].map(i => (
+              {[1, 2, 3, 4, 5].map((i) => (
                 <div key={i} className="h-12 bg-white/5 rounded-xl animate-pulse" />
               ))}
             </div>
@@ -516,16 +811,15 @@ const Settings = () => {
                   className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b gap-1 sm:gap-0"
                   style={{ borderColor: "rgba(255,255,255,0.05)" }}
                 >
-                  <span className="text-xs text-white/30 font-semibold">
-                    {label}
+                  <span className="text-xs text-white/30 font-semibold">{label}</span>
+                  <span className="text-sm font-bold text-white/70 wrap-break-word">
+                    {value}
                   </span>
-                  <span className="text-sm font-bold text-white/70 wrap-break-word">{value}</span>
                 </div>
               ))}
             </>
           )}
-          
-          {/* Info message about invitations */}
+
           {isSuperAdmin && (
             <div
               className="pt-3 flex items-start gap-3 rounded-xl p-3 mt-2"
@@ -536,7 +830,8 @@ const Settings = () => {
             >
               <FiUser size={14} className="text-[#FF8C00] shrink-0 mt-0.5" />
               <p className="text-[11px] text-white/25 leading-relaxed">
-                You can invite new admins from the <strong className="text-[#FF8C00]/70">Admin Invitations</strong> page in the sidebar.
+                You can invite new admins from the{" "}
+                <strong className="text-[#FF8C00]/70">Admin Invitations</strong> page in the sidebar.
               </p>
             </div>
           )}
@@ -582,7 +877,9 @@ const Settings = () => {
             {[1, 2, 3].map((s) => (
               <div key={s} className="flex items-center gap-2">
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${pwStep >= s ? "text-white" : "bg-white/5 text-white/25"}`}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${
+                    pwStep >= s ? "text-white" : "bg-white/5 text-white/25"
+                  }`}
                   style={
                     pwStep >= s
                       ? {
@@ -594,7 +891,9 @@ const Settings = () => {
                   {pwStep > s ? <Check size={10} /> : s}
                 </div>
                 <span
-                  className={`text-[10px] font-bold hidden sm:inline ${pwStep === s ? "text-white/60" : "text-white/20"}`}
+                  className={`text-[10px] font-bold hidden sm:inline ${
+                    pwStep === s ? "text-white/60" : "text-white/20"
+                  }`}
                 >
                   {s === 1 ? "Send Code" : s === 2 ? "Verify" : "New Password"}
                 </span>
@@ -614,9 +913,7 @@ const Settings = () => {
                 <input
                   type="email"
                   value={pwForm.email}
-                  onChange={(e) =>
-                    setPwForm((p) => ({ ...p, email: e.target.value }))
-                  }
+                  onChange={(e) => setPwForm((p) => ({ ...p, email: e.target.value }))}
                   placeholder="Your admin email"
                   className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20"
                 />
@@ -625,16 +922,12 @@ const Settings = () => {
                 onClick={handleSendCode}
                 disabled={pwLoading}
                 className="px-4 py-3 rounded-2xl text-xs font-black text-white transition-all hover:opacity-90 disabled:opacity-50 shrink-0"
-                style={{
-                  background: "linear-gradient(135deg,#B42225,#FF8C00)",
-                }}
+                style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}
               >
                 {pwLoading && pwStep === 1 ? "Sending..." : "Send Code"}
               </button>
             </div>
-            {pwErrors.email && (
-              <p className="text-xs text-red-400 mt-1">{pwErrors.email}</p>
-            )}
+            {pwErrors.email && <p className="text-xs text-red-400 mt-1">{pwErrors.email}</p>}
           </div>
 
           {/* Step 2 */}
@@ -649,16 +942,12 @@ const Settings = () => {
                   <input
                     type="text"
                     value={pwForm.code}
-                    onChange={(e) =>
-                      setPwForm((p) => ({ ...p, code: e.target.value }))
-                    }
+                    onChange={(e) => setPwForm((p) => ({ ...p, code: e.target.value }))}
                     placeholder="6-digit code from email"
                     className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20"
                   />
                 </div>
-                {pwErrors.code && (
-                  <p className="text-xs text-red-400 mt-1">{pwErrors.code}</p>
-                )}
+                {pwErrors.code && <p className="text-xs text-red-400 mt-1">{pwErrors.code}</p>}
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-2">
@@ -680,9 +969,7 @@ const Settings = () => {
                   />
                 </div>
                 {pwErrors.currentPassword && (
-                  <p className="text-xs text-red-400 mt-1">
-                    {pwErrors.currentPassword}
-                  </p>
+                  <p className="text-xs text-red-400 mt-1">{pwErrors.currentPassword}</p>
                 )}
               </div>
               <button
@@ -723,9 +1010,7 @@ const Settings = () => {
                     <input
                       type={showPw ? "text" : "password"}
                       value={pwForm[key]}
-                      onChange={(e) =>
-                        setPwForm((p) => ({ ...p, [key]: e.target.value }))
-                      }
+                      onChange={(e) => setPwForm((p) => ({ ...p, [key]: e.target.value }))}
                       placeholder={placeholder}
                       className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20"
                     />
@@ -739,9 +1024,7 @@ const Settings = () => {
                       </button>
                     )}
                   </div>
-                  {pwErrors[key] && (
-                    <p className="text-xs text-red-400 mt-1">{pwErrors[key]}</p>
-                  )}
+                  {pwErrors[key] && <p className="text-xs text-red-400 mt-1">{pwErrors[key]}</p>}
                 </div>
               ))}
               <button
@@ -776,9 +1059,7 @@ const Settings = () => {
         }}
       >
         <h3 className="text-sm font-black text-red-400/70 mb-1">Danger Zone</h3>
-        <p className="text-xs text-white/25 mb-4">
-          Sign out of the admin panel on this device.
-        </p>
+        <p className="text-xs text-white/25 mb-4">Sign out of the admin panel on this device.</p>
         <button
           onClick={handleLogout}
           className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-sm font-black text-red-400 hover:bg-red-500 hover:text-white transition-all duration-200"

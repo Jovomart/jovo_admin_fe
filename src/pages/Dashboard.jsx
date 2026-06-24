@@ -1,4 +1,5 @@
 // src/pages/Dashboard.jsx
+
 import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
@@ -12,7 +13,7 @@ import {
 import { MdStorefront, MdOutlineSchool } from "react-icons/md";
 
 /* ═══════════════════════════════════════════════════════════════
-   UTILITIES  (unchanged from original)
+   UTILITIES
 ═══════════════════════════════════════════════════════════════ */
 
 const normalizeList = (result, type = "sellers") => {
@@ -39,15 +40,27 @@ const normalizeList = (result, type = "sellers") => {
 };
 
 /**
- * Parse revenue summary from any API shape.
+ * Parse revenue summary from the actual API response.
+ * Response: { status, status_code, message, data: { collected: { platform_fee, shipping_fee, total_revenue }, pending: { platform_fee, shipping_fee, total_revenue } } }
  */
 const parseRevenueSummary = (raw) => {
   if (!raw) return null;
   const d = raw.data ?? raw;
+
+  // Handle the actual API response structure
+  const collected = d.collected ?? {};
+  const pending = d.pending ?? {};
+
+  const collectedRevenue = Number(collected.total_revenue ?? 0);
+  const pendingRevenue = Number(pending.total_revenue ?? 0);
+  const totalRevenue = collectedRevenue + pendingRevenue;
+
   return {
-    total: Number(d.total_revenue ?? d.total ?? d.grand_total ?? 0),
-    collected: Number(d.collected_revenue ?? d.collected ?? d.collected_amount ?? 0),
-    pending: Number(d.pending_revenue ?? d.pending ?? d.pending_amount ?? 0),
+    total: totalRevenue,
+    collected: collectedRevenue,
+    pending: pendingRevenue,
+    // Keep raw data for debugging
+    _raw: { collected, pending }
   };
 };
 
@@ -60,7 +73,7 @@ const formatCurrency = (n) =>
   }).format(n ?? 0);
 
 /* ═══════════════════════════════════════════════════════════════
-   STAT CARD  (unchanged)
+   STAT CARD
 ═══════════════════════════════════════════════════════════════ */
 const StatCard = ({ icon, label, value, sub, color, onClick, loading }) => (
   <div
@@ -87,7 +100,7 @@ const StatCard = ({ icon, label, value, sub, color, onClick, loading }) => (
 );
 
 /* ═══════════════════════════════════════════════════════════════
-   REVENUE WIDGET  (new)
+   REVENUE WIDGET
 ═══════════════════════════════════════════════════════════════ */
 const RevenueWidget = ({ revenue, loading, error, onNavigate }) => {
   if (error) {
@@ -153,9 +166,14 @@ const RevenueWidget = ({ revenue, loading, error, onNavigate }) => {
               }}
             />
           </div>
-          <p className="text-[10px] text-white/25 mt-1.5">
-            {collectedPct}% collected
-          </p>
+          <div className="flex justify-between mt-1.5">
+            <p className="text-[10px] text-white/25">
+              {collectedPct}% collected
+            </p>
+            <p className="text-[10px] text-white/25">
+              {formatCurrency(collected)} / {formatCurrency(total)}
+            </p>
+          </div>
         </div>
       )}
 
@@ -178,6 +196,11 @@ const RevenueWidget = ({ revenue, loading, error, onNavigate }) => {
               {formatCurrency(collected)}
             </p>
           )}
+          {!loading && collected > 0 && (
+            <p className="text-[9px] text-white/15 mt-0.5">
+              {collectedPct}% of total
+            </p>
+          )}
         </div>
         <div className="px-6 py-4">
           <div className="flex items-center gap-1.5 mb-1">
@@ -193,6 +216,11 @@ const RevenueWidget = ({ revenue, loading, error, onNavigate }) => {
               {formatCurrency(pending)}
             </p>
           )}
+          {!loading && pending > 0 && (
+            <p className="text-[9px] text-white/15 mt-0.5">
+              {100 - collectedPct}% of total
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -200,7 +228,7 @@ const RevenueWidget = ({ revenue, loading, error, onNavigate }) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   ACTIVITY HELPERS  (unchanged)
+   ACTIVITY HELPERS
 ═══════════════════════════════════════════════════════════════ */
 const getActionIcon = (action) => {
   const a = (action || "").toLowerCase();
@@ -274,7 +302,7 @@ const ActivityItem = ({ log, isSuperAdmin }) => {
 const Dashboard = () => {
   const { admin } = useContext(AuthContext);
   const navigate = useNavigate();
-  const displayName = admin?.full_name || admin?.first_name || "Admin";
+  const displayName = admin?.full_name || admin?.first_name || admin?.username || "Admin";
 
   const now = new Date();
   const hour = now.getHours();
@@ -338,7 +366,8 @@ const Dashboard = () => {
       setRevenueError("");
       try {
         const raw = await AdminApiService.getRevenueSummary();
-        setRevenue(parseRevenueSummary(raw));
+        const parsed = parseRevenueSummary(raw);
+        setRevenue(parsed);
       } catch (err) {
         console.error("Failed to fetch revenue summary:", err);
         setRevenueError(err.message || "Failed to load revenue");
@@ -391,10 +420,10 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-8 max-w-7xl">
+    <div className="space-y-8 max-w-7xl mx-auto px-3 sm:px-4 pb-6 sm:pb-8">
       {/* Greeting banner */}
       <div
-        className="rounded-3xl p-8 relative overflow-hidden"
+        className="rounded-3xl p-6 sm:p-8 relative overflow-hidden"
         style={{ background: "linear-gradient(135deg,#0d0d14 0%,#100a0a 50%,#1a0505 100%)", border: "1px solid rgba(255,255,255,0.06)" }}
       >
         <div
@@ -409,7 +438,7 @@ const Dashboard = () => {
           <p className="text-[10px] font-bold tracking-[3px] uppercase text-white/25 mb-2">
             {now.toLocaleDateString("en-NG", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </p>
-          <h1 className="text-3xl font-black text-white mb-2" style={{ fontFamily: "'Playfair Display',serif" }}>
+          <h1 className="text-2xl sm:text-3xl font-black text-white mb-2" style={{ fontFamily: "'Playfair Display',serif" }}>
             {greeting},{" "}
             <span style={{ background: "linear-gradient(90deg,#FF8C00,#FFB347)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               {displayName}
@@ -462,7 +491,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* ── Revenue Widget (full-width) ──────────────────────── */}
+      {/* ── Revenue Widget ────────────────────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-black uppercase tracking-[2px] text-white/30">
@@ -495,11 +524,11 @@ const Dashboard = () => {
               <button
                 key={to}
                 onClick={() => navigate(to)}
-                className="flex items-center gap-4 p-5 rounded-3xl border text-left transition-all duration-300 hover:-translate-y-1 group"
+                className="flex items-center gap-4 p-4 sm:p-5 rounded-3xl border text-left transition-all duration-300 hover:-translate-y-1 group"
                 style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 4px 24px rgba(0,0,0,0.3)" }}
               >
                 <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0"
                   style={{ background: `${color}15`, border: `1px solid ${color}25`, color }}
                 >
                   {icon}
@@ -508,7 +537,7 @@ const Dashboard = () => {
                   <p className="text-sm font-black text-white group-hover:text-[#FF8C00] transition-colors">
                     {label}
                   </p>
-                  <p className="text-xs text-white/30 mt-0.5">{sub}</p>
+                  <p className="text-xs text-white/30 mt-0.5 truncate">{sub}</p>
                 </div>
                 <FiArrowRight size={16} className="text-white/20 group-hover:text-[#FF8C00] group-hover:translate-x-1 transition-all shrink-0" />
               </button>
@@ -544,7 +573,7 @@ const Dashboard = () => {
             className="rounded-3xl border"
             style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 4px 24px rgba(0,0,0,0.3)" }}
           >
-            <div className="p-5 border-b border-white/5">
+            <div className="p-4 sm:p-5 border-b border-white/5">
               <div className="flex items-center gap-2">
                 <FiActivity size={16} className="text-[#FF8C00]" />
                 <h3 className="text-sm font-black text-white">Activity Feed</h3>
@@ -554,7 +583,7 @@ const Dashboard = () => {
               </p>
             </div>
 
-            <div className="p-5 max-h-100 overflow-y-auto custom-scrollbar">
+            <div className="p-4 sm:p-5 max-h-100 overflow-y-auto custom-scrollbar">
               {activitiesLoading && activities.length === 0 ? (
                 <div className="space-y-3">
                   {[1, 2, 3, 4, 5].map((i) => (

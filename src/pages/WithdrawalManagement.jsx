@@ -51,6 +51,13 @@ const STATUS_CONFIG = {
     border: "rgba(239,68,68,0.2)",
     icon: FiXCircle,
   },
+  cancelled: {
+    label: "Cancelled",
+    color: "#6B7280",
+    bg: "rgba(107,114,128,0.1)",
+    border: "rgba(107,114,128,0.2)",
+    icon: FiXCircle,
+  },
 };
 
 const STATUS_FILTERS = [
@@ -58,14 +65,17 @@ const STATUS_FILTERS = [
   { value: "pending", label: "Pending" },
   { value: "completed", label: "Completed" },
   { value: "rejected", label: "Rejected" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 const formatCurrency = (amount) => {
+  if (!amount && amount !== 0) return "₦0";
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
-    minimumFractionDigits: 2,
-  }).format(amount || 0);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
 };
 
 const formatDate = (dateString) => {
@@ -87,6 +97,7 @@ const truncate = (str, length = 20) => {
 };
 
 const copyToClipboard = (text, onSuccess) => {
+  if (!text) return;
   navigator.clipboard.writeText(text);
   onSuccess?.();
 };
@@ -102,7 +113,7 @@ const ReviewModal = ({ withdrawal, onClose, onApprove, onReject, loading }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopyId = () => {
-    copyToClipboard(withdrawal?.id || withdrawal?.withdrawal_id || "", () => {
+    copyToClipboard(withdrawal?.id || "", () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -190,7 +201,7 @@ const ReviewModal = ({ withdrawal, onClose, onApprove, onReject, loading }) => {
             <div className="flex items-center justify-between text-sm">
               <span className="text-white/40">Withdrawal ID</span>
               <div className="flex items-center gap-2">
-                <code className="text-xs text-white/70">{truncate(withdrawal.id || withdrawal.withdrawal_id, 16)}</code>
+                <code className="text-xs text-white/70">{truncate(withdrawal.id, 16)}</code>
                 <button
                   onClick={handleCopyId}
                   className="text-white/30 hover:text-white/70 transition"
@@ -205,21 +216,32 @@ const ReviewModal = ({ withdrawal, onClose, onApprove, onReject, loading }) => {
               <span className="text-white/40">Method</span>
               <span className="text-white/70 flex items-center gap-1">
                 <MdOutlineAccountBalance size={14} />
-                {withdrawal.method || "Bank Transfer"}
+                {withdrawal.method || withdrawal.payment_method || "Bank Transfer"}
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-white/40">Account</span>
-              <span className="text-white/70 font-mono text-xs">
-                {withdrawal.account_number ? `${withdrawal.account_number} (${withdrawal.bank_name || "—"})` : "—"}
-              </span>
-            </div>
+            {withdrawal.bank_name && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white/40">Bank</span>
+                <span className="text-white/70">{withdrawal.bank_name}</span>
+              </div>
+            )}
 
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-white/40">Account Name</span>
-              <span className="text-white/70">{withdrawal.account_name || "—"}</span>
-            </div>
+            {withdrawal.account_number && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white/40">Account Number</span>
+                <span className="text-white/70 font-mono text-xs">
+                  {withdrawal.account_number}
+                </span>
+              </div>
+            )}
+
+            {withdrawal.account_name && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white/40">Account Name</span>
+                <span className="text-white/70">{withdrawal.account_name}</span>
+              </div>
+            )}
 
             <div className="flex items-center justify-between text-sm">
               <span className="text-white/40">Requested</span>
@@ -235,6 +257,13 @@ const ReviewModal = ({ withdrawal, onClose, onApprove, onReject, loading }) => {
                 <span className="text-white/70">{formatDate(withdrawal.processed_at)}</span>
               </div>
             )}
+
+            {withdrawal.completed_at && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white/40">Completed</span>
+                <span className="text-white/70">{formatDate(withdrawal.completed_at)}</span>
+              </div>
+            )}
           </div>
 
           {/* User Details */}
@@ -246,37 +275,43 @@ const ReviewModal = ({ withdrawal, onClose, onApprove, onReject, loading }) => {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-white/40">Name</span>
-                <span className="text-white/70">{withdrawal.user_name || "—"}</span>
+                <span className="text-white/70">{withdrawal.user_name || withdrawal.user?.full_name || "—"}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-white/40">Email</span>
                 <span className="text-white/70 flex items-center gap-1">
                   <FiMail size={10} />
-                  {withdrawal.user_email || "—"}
+                  {withdrawal.user_email || withdrawal.user?.email || "—"}
                 </span>
               </div>
+              {withdrawal.user_id && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/40">User ID</span>
+                  <span className="text-white/40 text-xs font-mono">{truncate(withdrawal.user_id, 12)}</span>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Rejection Reason (if rejected) */}
-          {withdrawal.status === "rejected" && withdrawal.rejection_reason && (
+          {withdrawal.status === "rejected" && (withdrawal.rejection_reason || withdrawal.notes) && (
             <div className="rounded-xl p-4" style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.15)" }}>
               <p className="text-xs font-bold uppercase tracking-wider text-red-400/70 flex items-center gap-2">
                 <FiAlertCircle size={10} />
                 Rejection Reason
               </p>
-              <p className="text-sm text-red-300/80 mt-1">{withdrawal.rejection_reason}</p>
+              <p className="text-sm text-red-300/80 mt-1">{withdrawal.rejection_reason || withdrawal.notes}</p>
             </div>
           )}
 
           {/* Reference (if completed) */}
-          {withdrawal.status === "completed" && withdrawal.reference && (
+          {withdrawal.status === "completed" && (withdrawal.reference || withdrawal.transaction_reference) && (
             <div className="rounded-xl p-4" style={{ background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)" }}>
               <p className="text-xs font-bold uppercase tracking-wider text-green-400/70 flex items-center gap-2">
                 <FiExternalLink size={10} />
                 Transaction Reference
               </p>
-              <code className="text-xs text-green-300/80 mt-1 block break-all">{withdrawal.reference}</code>
+              <code className="text-xs text-green-300/80 mt-1 block break-all">{withdrawal.reference || withdrawal.transaction_reference}</code>
             </div>
           )}
 
@@ -453,14 +488,16 @@ const WithdrawalCard = ({ withdrawal, onReview, actionId }) => {
         <div className="space-y-2 mb-3">
           <div className="flex items-center gap-2 text-xs">
             <FiUser size={10} className="text-white/30" />
-            <span className="text-white/60">{withdrawal.user_name || "—"}</span>
+            <span className="text-white/60">{withdrawal.user_name || withdrawal.user?.full_name || "—"}</span>
           </div>
-          <div className="flex items-center gap-2 text-xs">
-            <MdOutlineAccountBalance size={10} className="text-white/30" />
-            <span className="text-white/60">
-              {withdrawal.account_number ? `****${withdrawal.account_number.slice(-4)}` : "—"}
-            </span>
-          </div>
+          {withdrawal.bank_name && (
+            <div className="flex items-center gap-2 text-xs">
+              <MdOutlineAccountBalance size={10} className="text-white/30" />
+              <span className="text-white/60">
+                {withdrawal.bank_name} {withdrawal.account_number ? `(${withdrawal.account_number})` : ""}
+              </span>
+            </div>
+          )}
           <div className="flex items-center gap-2 text-xs">
             <FiCalendar size={10} className="text-white/30" />
             <span className="text-white/40">{formatDate(withdrawal.requested_at || withdrawal.created_at)}</span>
@@ -512,20 +549,20 @@ const WithdrawalRow = ({ withdrawal, onReview, actionId }) => {
             {formatCurrency(withdrawal.amount)}
           </p>
           <p className="text-[10px] text-white/30 font-mono">
-            {truncate(withdrawal.id || withdrawal.withdrawal_id, 12)}
+            {truncate(withdrawal.id, 12)}
           </p>
         </div>
       </td>
       <td className="px-4 py-3">
         <div className="space-y-0.5">
-          <p className="text-sm text-white/80">{withdrawal.user_name || "—"}</p>
-          <p className="text-xs text-white/40">{withdrawal.user_email || "—"}</p>
+          <p className="text-sm text-white/80">{withdrawal.user_name || withdrawal.user?.full_name || "—"}</p>
+          <p className="text-xs text-white/40">{withdrawal.user_email || withdrawal.user?.email || "—"}</p>
         </div>
       </td>
       <td className="px-4 py-3">
         <div className="space-y-0.5">
           <p className="text-xs text-white/60 font-mono">
-            {withdrawal.account_number ? `****${withdrawal.account_number.slice(-4)}` : "—"}
+            {withdrawal.account_number || "—"}
           </p>
           <p className="text-[10px] text-white/30">
             {withdrawal.bank_name || "—"}
@@ -617,29 +654,36 @@ const WithdrawalManagement = () => {
     setLoading(true);
     setError("");
     try {
-      const skip = (currentPage - 1) * itemsPerPage;
+      // Use the ApiService method instead of direct makeRequest
       const response = await ApiService.getWithdrawals({
         status_filter: statusFilter || null,
-        skip,
+        skip: (currentPage - 1) * itemsPerPage,
         limit: itemsPerPage,
       });
 
+      // Handle the API response structure: { status, status_code, message, data: { withdrawals, total, skip, limit } }
       let items = [];
       let total = 0;
 
-      const data = response?.data || response;
-
-      if (Array.isArray(data)) {
-        items = data;
-        total = data.length;
-      } else if (data?.withdrawals && Array.isArray(data.withdrawals)) {
-        items = data.withdrawals;
-        total = data.total || items.length;
-      } else if (data?.items && Array.isArray(data.items)) {
-        items = data.items;
-        total = data.total || items.length;
-      } else {
-        items = [];
+      // Check if response is the full API response with data wrapper
+      if (response?.data?.withdrawals && Array.isArray(response.data.withdrawals)) {
+        items = response.data.withdrawals;
+        total = response.data.total || 0;
+      } 
+      // Check if response is the data object directly
+      else if (response?.withdrawals && Array.isArray(response.withdrawals)) {
+        items = response.withdrawals;
+        total = response.total || 0;
+      }
+      // Check if response is an array directly
+      else if (Array.isArray(response)) {
+        items = response;
+        total = response.length;
+      }
+      // Check if response has data array
+      else if (response?.data && Array.isArray(response.data)) {
+        items = response.data;
+        total = response.total || items.length;
       }
 
       setWithdrawals(items);
@@ -660,6 +704,7 @@ const WithdrawalManagement = () => {
   const handleApprove = async (withdrawalId, reference = "") => {
     setActionId(withdrawalId);
     try {
+      // Use the ApiService method
       await ApiService.approveWithdrawal(withdrawalId, reference);
       showToast("Withdrawal approved successfully!");
       setReviewModal(null);
@@ -674,6 +719,7 @@ const WithdrawalManagement = () => {
   const handleReject = async (withdrawalId, rejectionReason) => {
     setActionId(withdrawalId);
     try {
+      // Use the ApiService method
       await ApiService.rejectWithdrawal(withdrawalId, rejectionReason);
       showToast("Withdrawal rejected successfully!");
       setReviewModal(null);
@@ -696,9 +742,12 @@ const WithdrawalManagement = () => {
     const searchLower = search.toLowerCase();
     return (
       (w.user_name?.toLowerCase().includes(searchLower)) ||
+      (w.user?.full_name?.toLowerCase().includes(searchLower)) ||
       (w.user_email?.toLowerCase().includes(searchLower)) ||
+      (w.user?.email?.toLowerCase().includes(searchLower)) ||
       (w.id?.toLowerCase().includes(searchLower)) ||
-      (w.withdrawal_id?.toLowerCase().includes(searchLower))
+      (w.account_number?.toLowerCase().includes(searchLower)) ||
+      (w.bank_name?.toLowerCase().includes(searchLower))
     );
   });
 
@@ -710,21 +759,31 @@ const WithdrawalManagement = () => {
     totalAmount: withdrawals.reduce((sum, w) => sum + (w.amount || 0), 0),
   };
 
+  // Show empty state message when there are no withdrawals
+  const hasWithdrawals = filteredWithdrawals.length > 0;
+
   return (
-    <div className="space-y-5 sm:space-y-6 max-w-7xl mx-auto px-3 sm:px-4">
+    <div className="space-y-5 sm:space-y-6 max-w-7xl mx-auto px-3 sm:px-4 pb-6">
       {/* Toast */}
       {toast && (
         <div
-          className="fixed top-4 right-4 z-50 flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold animate-slide-in"
+          className="fixed top-4 left-3 right-3 sm:left-auto sm:right-4 z-50 flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold animate-slide-in sm:max-w-sm"
           style={{
-            background: toast.type === "error" ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.15)",
-            border: `1px solid ${toast.type === "error" ? "rgba(239,68,68,0.3)" : "rgba(16,185,129,0.3)"}`,
-            color: toast.type === "error" ? "#EF4444" : "#10B981",
+            background: toast.type === "error" ? "rgba(239,68,68,0.95)" : 
+                       toast.type === "info" ? "rgba(59,130,246,0.95)" : "rgba(16,185,129,0.95)",
+            border: `1px solid ${toast.type === "error" ? "#EF4444" : 
+                                   toast.type === "info" ? "#3B82F6" : "#10B981"}`,
+            color: "white",
             backdropFilter: "blur(12px)",
+            zIndex: 9999,
           }}
         >
-          {toast.type === "error" ? <FiAlertCircle size={14} /> : <FiCheck size={14} />}
-          {toast.msg}
+          {toast.type === "error" ? <FiAlertCircle size={14} /> : 
+           toast.type === "info" ? <FiAlertCircle size={14} /> : <FiCheck size={14} />}
+          <span className="flex-1">{toast.msg}</span>
+          <button onClick={() => setToast(null)} className="text-white/70 hover:text-white">
+            <FiX size={14} />
+          </button>
         </div>
       )}
 
@@ -752,7 +811,7 @@ const WithdrawalManagement = () => {
         <button
           onClick={() => fetchWithdrawals()}
           disabled={loading}
-          className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white/50 hover:text-white transition-all disabled:opacity-40"
+          className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white/50 hover:text-white transition-all disabled:opacity-40 w-full sm:w-auto"
           style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
         >
           <FiRefreshCw size={14} className={loading ? "animate-spin" : ""} />
@@ -760,7 +819,7 @@ const WithdrawalManagement = () => {
         </button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Show 0 values when no data */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
         {[
           { label: "Total", value: stats.total, color: "#0EA5E9", icon: <MdOutlinePayments size={16} /> },
@@ -779,7 +838,7 @@ const WithdrawalManagement = () => {
               <p className="text-[10px] font-black uppercase tracking-wider text-white/20">{label}</p>
             </div>
             <p className="text-lg sm:text-xl font-black" style={{ color }}>
-              {loading && label !== "Total Amount" ? <FiLoader className="animate-spin inline" /> : value}
+              {loading ? <FiLoader className="animate-spin inline" size={16} /> : value}
             </p>
           </div>
         ))}
@@ -791,7 +850,7 @@ const WithdrawalManagement = () => {
           <FiSearch size={14} className="text-white/30 shrink-0" />
           <input
             type="text"
-            placeholder="Search by name, email, or ID..."
+            placeholder="Search by name, email, account, or ID..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
             className="flex-1 text-xs sm:text-sm text-white outline-none bg-transparent placeholder-white/20"
@@ -842,12 +901,12 @@ const WithdrawalManagement = () => {
             <div key={i} className="rounded-xl sm:rounded-2xl animate-pulse" style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.05)", height: "200px" }} />
           ))}
         </div>
-      ) : filteredWithdrawals.length > 0 ? (
+      ) : hasWithdrawals ? (
         <>
           {/* Desktop Table View */}
           {!isMobile && (
             <div className="rounded-xl sm:rounded-2xl overflow-x-auto" style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.05)" }}>
-              <table className="w-full">
+              <table className="w-full min-w-175">
                 <thead>
                   <tr className="border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
                     <th className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-white/30">Amount</th>
@@ -910,12 +969,20 @@ const WithdrawalManagement = () => {
               </button>
             </div>
           )}
+
+          {/* Results count */}
+          <p className="text-center text-[10px] text-white/30">
+            Showing {filteredWithdrawals.length} of {totalItems} withdrawals
+          </p>
         </>
       ) : (
         <div className="rounded-2xl sm:rounded-3xl p-12 sm:p-16 text-center border" style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.05)" }}>
           <MdOutlinePayments size={48} className="text-white/10 mx-auto mb-3" />
           <p className="text-sm sm:text-base font-bold text-white/30">
             {search || statusFilter ? "No withdrawals match your filters" : "No withdrawal requests yet"}
+          </p>
+          <p className="text-xs text-white/15 mt-1">
+            Withdrawal requests will appear here once sellers submit them
           </p>
           {(search || statusFilter) && (
             <button onClick={clearFilters} className="mt-4 text-xs sm:text-sm font-black text-[#FF8C00] hover:underline">

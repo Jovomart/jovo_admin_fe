@@ -33,8 +33,8 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(Number(amount));
 };
 
@@ -67,24 +67,42 @@ const formatDateShort = (dateStr) => {
 };
 
 /**
- * Parse the revenue summary from any API shape.
+ * Parse the revenue summary from the API response.
+ * Response structure: { status, status_code, message, data: { collected: { platform_fee, shipping_fee, total_revenue }, pending: { platform_fee, shipping_fee, total_revenue } } }
  */
 const parseSummary = (raw) => {
   if (!raw) return null;
   const d = raw.data ?? raw;
 
+  // Handle the actual API response structure
+  const collected = d.collected ?? {};
+  const pending = d.pending ?? {};
+
+  const collectedRevenue = collected.total_revenue ?? 0;
+  const pendingRevenue = pending.total_revenue ?? 0;
+  const totalRevenue = collectedRevenue + pendingRevenue;
+
+  // Count records from the collected/pending objects if available
+  // Since the summary doesn't include counts, we'll use 0 as default
+  const collectedCount = d.collected_count ?? d.collected_records ?? 0;
+  const pendingCount = d.pending_count ?? d.pending_records ?? 0;
+  const totalRecords = collectedCount + pendingCount;
+
   return {
-    total_revenue: d.total_revenue ?? d.total ?? d.grand_total ?? 0,
-    collected_revenue: d.collected_revenue ?? d.collected ?? d.collected_amount ?? 0,
-    pending_revenue: d.pending_revenue ?? d.pending ?? d.pending_amount ?? 0,
-    total_records: d.total_records ?? d.count ?? d.total_count ?? 0,
-    collected_count: d.collected_count ?? d.collected_records ?? 0,
-    pending_count: d.pending_count ?? d.pending_records ?? 0,
+    total_revenue: totalRevenue,
+    collected_revenue: collectedRevenue,
+    pending_revenue: pendingRevenue,
+    total_records: totalRecords,
+    collected_count: collectedCount,
+    pending_count: pendingCount,
+    // Keep raw data for debugging
+    _raw: { collected, pending }
   };
 };
 
 /**
- * Parse revenue records list from any API shape.
+ * Parse revenue records list from the API response.
+ * Response structure: { status, status_code, message, data: { records: [...], total, skip, limit } }
  */
 const parseRecords = (raw) => {
   if (!raw) return { items: [], total: 0 };
@@ -93,18 +111,31 @@ const parseRecords = (raw) => {
   let items = [];
   let total = 0;
 
-  if (Array.isArray(d?.records)) { items = d.records; total = d.total ?? items.length; }
-  else if (Array.isArray(d?.items)) { items = d.items; total = d.total ?? items.length; }
-  else if (Array.isArray(d?.results)) { items = d.results; total = d.count ?? d.total ?? items.length; }
-  else if (Array.isArray(d?.revenue_records)) { items = d.revenue_records; total = d.total ?? items.length; }
-  else if (Array.isArray(d)) { items = d; total = items.length; }
+  if (Array.isArray(d?.records)) { 
+    items = d.records; 
+    total = d.total ?? items.length; 
+  } else if (Array.isArray(d?.items)) { 
+    items = d.items; 
+    total = d.total ?? items.length; 
+  } else if (Array.isArray(d?.results)) { 
+    items = d.results; 
+    total = d.count ?? d.total ?? items.length; 
+  } else if (Array.isArray(d?.revenue_records)) { 
+    items = d.revenue_records; 
+    total = d.total ?? items.length; 
+  } else if (Array.isArray(d)) { 
+    items = d; 
+    total = items.length; 
+  }
 
   const normalized = items.map((r) => ({
     ...r,
     id: r.id ?? r._id ?? r.record_id,
     order_id: r.order_id ?? r.orderId ?? r.order?.id,
-    order_ref: r.order_ref ?? r.reference ?? r.order_reference ?? r.order_id,
-    amount: r.amount ?? r.revenue_amount ?? r.platform_fee ?? 0,
+    order_ref: r.order_number ?? r.order_ref ?? r.reference ?? r.order_reference ?? r.order_id,
+    amount: r.total_revenue ?? r.amount ?? r.revenue_amount ?? r.platform_fee ?? 0,
+    platform_fee: r.platform_fee ?? 0,
+    shipping_fee: r.shipping_fee ?? 0,
     status: (r.status ?? r.payment_status ?? "pending").toLowerCase(),
     seller_name: r.seller_name ?? r.seller?.name ?? r.seller?.business_name ?? "—",
     created_at: r.created_at ?? r.createdAt ?? r.date,
@@ -122,18 +153,20 @@ const Toast = ({ toast }) => {
   const isErr = toast.type === "error";
   return (
     <div
-      className="fixed top-5 right-5 z-200 flex items-center gap-2.5 px-4 py-3 rounded-2xl text-sm font-bold pointer-events-none"
+      className="fixed top-4 left-3 right-3 sm:left-auto sm:right-4 z-50 flex items-center gap-2.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold animate-slide-in sm:max-w-sm"
       style={{
-        background: isErr ? "rgba(239,68,68,0.14)" : "rgba(16,185,129,0.14)",
-        border: `1px solid ${isErr ? "rgba(239,68,68,0.3)" : "rgba(16,185,129,0.3)"}`,
-        color: isErr ? "#EF4444" : "#10B981",
-        boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+        background: isErr ? "rgba(239,68,68,0.95)" : "rgba(16,185,129,0.95)",
+        border: `1px solid ${isErr ? "#EF4444" : "#10B981"}`,
+        color: "white",
         backdropFilter: "blur(12px)",
-        animation: "slideInRight 0.25s ease",
+        zIndex: 9999,
       }}
     >
-      {isErr ? <FiAlertCircle size={15} /> : <FiCheck size={15} />}
-      <span style={{ maxWidth: 340 }}>{toast.msg}</span>
+      {isErr ? <FiAlertCircle size={14} /> : <FiCheck size={14} />}
+      <span className="flex-1">{toast.msg}</span>
+      <button onClick={() => setToast(null)} className="text-white/70 hover:text-white">
+        <FiX size={14} />
+      </button>
     </div>
   );
 };
@@ -142,7 +175,7 @@ const Toast = ({ toast }) => {
    SUMMARY SKELETON
 ═══════════════════════════════════════════════════════════════ */
 const SummarySkeleton = () => (
-  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
     {[1, 2, 3].map((i) => (
       <div
         key={i}
@@ -210,7 +243,7 @@ const SummaryCards = ({ summary }) => {
       {cards.map(({ label, value, sub, Icon, color, bg, border, glow, trend, trendUp }) => (
         <div
           key={label}
-          className="rounded-2xl p-5 flex flex-col gap-4 relative overflow-hidden"
+          className="rounded-2xl p-5 flex flex-col gap-4 relative overflow-hidden transition-all hover:scale-[1.01]"
           style={{ background: "#0d0d14", border: `1px solid ${border}` }}
         >
           {/* Glow blob */}
@@ -304,7 +337,7 @@ const TableSkeleton = () => (
 const FilterPill = ({ label, active, onClick, color }) => (
   <button
     onClick={onClick}
-    className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all"
+    className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap"
     style={{
       background: active
         ? color
@@ -358,14 +391,16 @@ const Revenue = () => {
     setSummaryError("");
     try {
       const raw = await ApiService.getRevenueSummary();
-      setSummary(parseSummary(raw));
+      const parsed = parseSummary(raw);
+      setSummary(parsed);
     } catch (err) {
       console.error("fetchSummary error:", err);
       setSummaryError(err.message || "Failed to load revenue summary.");
+      showToast(err.message || "Failed to load revenue summary", "error");
     } finally {
       setSummaryLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   /* ── Fetch records ───────────────────────────────────────── */
   const fetchRecords = useCallback(
@@ -416,11 +451,14 @@ const Revenue = () => {
   const handleNext = () => setSkip((p) => p + LIMIT);
 
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div className="space-y-6 max-w-7xl mx-auto px-3 sm:px-4 pb-6 sm:pb-8">
       <style>{`
-        @keyframes slideInRight {
+        @keyframes slide-in {
           from { opacity: 0; transform: translateX(20px); }
           to   { opacity: 1; transform: translateX(0); }
+        }
+        .animate-slide-in {
+          animation: slide-in 0.25s ease;
         }
       `}</style>
 
@@ -430,7 +468,7 @@ const Revenue = () => {
       <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:justify-between">
         <div>
           <h1
-            className="text-2xl font-black text-white"
+            className="text-2xl sm:text-3xl font-black text-white"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
             Revenue Insights
@@ -444,7 +482,7 @@ const Revenue = () => {
           <button
             onClick={() => { fetchSummary(); fetchRecords(true); }}
             disabled={summaryLoading || recordsLoading}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white/50 hover:text-white transition-all disabled:opacity-40"
+            className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white/50 hover:text-white transition-all disabled:opacity-40 w-full sm:w-auto"
             style={{
               background: "rgba(255,255,255,0.05)",
               border: "1px solid rgba(255,255,255,0.08)",
@@ -454,7 +492,7 @@ const Revenue = () => {
               size={13}
               className={summaryLoading || recordsLoading ? "animate-spin" : ""}
             />
-            Refresh
+            <span>Refresh</span>
           </button>
         </div>
       </div>
@@ -482,12 +520,12 @@ const Revenue = () => {
 
       {/* ── Records Table ────────────────────────────────────── */}
       <div
-        className="rounded-3xl overflow-hidden"
+        className="rounded-2xl sm:rounded-3xl overflow-hidden"
         style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.06)" }}
       >
         {/* Table header bar */}
         <div
-          className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between px-5 py-4 border-b"
+          className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between px-4 sm:px-5 py-4 border-b"
           style={{ borderColor: "rgba(255,255,255,0.05)" }}
         >
           <div className="flex items-center gap-2">
@@ -518,7 +556,7 @@ const Revenue = () => {
                 placeholder="Order ref, seller…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="bg-transparent text-xs text-white outline-none placeholder-white/20 w-36"
+                className="bg-transparent text-xs text-white outline-none placeholder-white/20 w-28 sm:w-36"
               />
               {search && (
                 <button
@@ -531,30 +569,32 @@ const Revenue = () => {
             </div>
 
             {/* Status filters */}
-            <FilterPill
-              label="All"
-              active={statusFilter === ""}
-              onClick={() => setStatusFilter("")}
-            />
-            <FilterPill
-              label="Collected"
-              active={statusFilter === "collected"}
-              onClick={() => setStatusFilter("collected")}
-              color="16,185,129"
-            />
-            <FilterPill
-              label="Pending"
-              active={statusFilter === "pending"}
-              onClick={() => setStatusFilter("pending")}
-              color="245,158,11"
-            />
+            <div className="flex gap-1">
+              <FilterPill
+                label="All"
+                active={statusFilter === ""}
+                onClick={() => setStatusFilter("")}
+              />
+              <FilterPill
+                label="Collected"
+                active={statusFilter === "collected"}
+                onClick={() => setStatusFilter("collected")}
+                color="16,185,129"
+              />
+              <FilterPill
+                label="Pending"
+                active={statusFilter === "pending"}
+                onClick={() => setStatusFilter("pending")}
+                color="245,158,11"
+              />
+            </div>
           </div>
         </div>
 
         {/* Error */}
         {recordsError && (
           <div
-            className="flex items-center gap-2.5 mx-5 my-4 rounded-2xl px-4 py-3"
+            className="flex items-center gap-2.5 mx-4 sm:mx-5 my-4 rounded-2xl px-4 py-3"
             style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.18)" }}
           >
             <FiAlertCircle size={14} className="text-red-400 shrink-0" />
@@ -570,7 +610,7 @@ const Revenue = () => {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left min-w-150">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                 {["Order Ref", "Seller", "Amount", "Status", "Date"].map((h) => (
@@ -599,7 +639,9 @@ const Revenue = () => {
                     <p className="text-sm font-bold text-white/30">
                       {search
                         ? `No records match "${search}"`
-                        : `No ${statusFilter || ""} revenue records found`}
+                        : statusFilter
+                        ? `No ${statusFilter} revenue records found`
+                        : "No revenue records found"}
                     </p>
                     {search && (
                       <button
@@ -617,7 +659,7 @@ const Revenue = () => {
                     key={r.id ?? i}
                     className="group transition-colors"
                     style={{
-                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      borderBottom: i < filtered.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
                       background:
                         i % 2 === 0
                           ? "transparent"
@@ -635,7 +677,7 @@ const Revenue = () => {
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
                         <FiHash size={11} className="text-white/20 shrink-0" />
-                        <span className="text-xs font-mono text-white/60 truncate max-w-32.5">
+                        <span className="text-xs font-mono text-white/60 truncate max-w-32">
                           {r.order_ref ?? r.order_id ?? "—"}
                         </span>
                       </div>
@@ -648,14 +690,21 @@ const Revenue = () => {
                       </span>
                     </td>
 
-                    {/* Amount */}
+                    {/* Amount - Show total revenue with breakdown */}
                     <td className="px-4 py-4">
-                      <span
-                        className="text-sm font-black"
-                        style={{ color: "#FF8C00" }}
-                      >
-                        {formatCurrency(r.amount)}
-                      </span>
+                      <div>
+                        <span
+                          className="text-sm font-black"
+                          style={{ color: "#FF8C00" }}
+                        >
+                          {formatCurrency(r.amount)}
+                        </span>
+                        {r.platform_fee > 0 && r.shipping_fee > 0 && (
+                          <p className="text-[9px] text-white/20 mt-0.5">
+                            ₦{r.platform_fee.toLocaleString()} fee + ₦{r.shipping_fee.toLocaleString()} shipping
+                          </p>
+                        )}
+                      </div>
                     </td>
 
                     {/* Status */}
@@ -687,13 +736,13 @@ const Revenue = () => {
         {/* Pagination footer */}
         {!recordsLoading && total > LIMIT && (
           <div
-            className="flex items-center justify-between px-5 py-4 border-t"
+            className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-5 py-4 border-t"
             style={{ borderColor: "rgba(255,255,255,0.05)" }}
           >
-            <p className="text-xs text-white/25 font-semibold">
-              Page {currentPage} of {totalPages} &nbsp;·&nbsp; {total} total
+            <p className="text-xs text-white/25 font-semibold order-2 sm:order-1">
+              Page {currentPage} of {totalPages} · {total} total
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 order-1 sm:order-2">
               <button
                 onClick={handlePrev}
                 disabled={skip === 0 || recordsLoading}

@@ -38,7 +38,8 @@ import { MdLocalShipping, MdStorefront } from "react-icons/md";
 
 const ORDER_STATUS = {
   pending: { label: "Pending", color: "#F59E0B", bg: "rgba(245,158,11,0.1)", icon: FiClock },
-  processing: { label: "Processing", color: "#3B82F6", bg: "rgba(59,130,246,0.1)", icon: FiLoader },
+  confirmed: { label: "Confirmed", color: "#3B82F6", bg: "rgba(59,130,246,0.1)", icon: FiLoader },
+  processing: { label: "Processing", color: "#8B5CF6", bg: "rgba(139,92,246,0.1)", icon: FiLoader },
   shipped: { label: "Shipped", color: "#8B5CF6", bg: "rgba(139,92,246,0.1)", icon: FiTruck },
   delivered: { label: "Delivered", color: "#10B981", bg: "rgba(16,185,129,0.1)", icon: FiCheckCircle },
   cancelled: { label: "Cancelled", color: "#EF4444", bg: "rgba(239,68,68,0.1)", icon: FiXCircle },
@@ -93,12 +94,6 @@ const getRelativeTime = (dateString) => {
   return formatDate(dateString);
 };
 
-const truncateText = (text, maxLength = 100) => {
-  if (!text) return "";
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + "...";
-};
-
 /* ─────────────────────────────────────────────────────────────
    STATS CARD COMPONENT
 ───────────────────────────────────────────────────────────── */
@@ -134,8 +129,9 @@ const OrderCard = ({ order, onClick }) => {
   const paymentStatus = PAYMENT_STATUS[order.payment_status] || PAYMENT_STATUS.pending;
   const StatusIcon = orderStatus.icon;
 
-  // Calculate total items
-  const totalItems = order.items?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0;
+  // Calculate total items across all seller orders
+  const totalItems = order.seller_orders?.reduce((sum, sellerOrder) => 
+    sum + (sellerOrder.items?.reduce((itemSum, item) => itemSum + (item.quantity || 1), 0) || 0), 0) || 0;
 
   return (
     <div
@@ -159,7 +155,7 @@ const OrderCard = ({ order, onClick }) => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs sm:text-sm font-mono font-bold text-white/80">
-                  #{order.order_reference?.slice(-8) || order.id?.slice(-8)}
+                  #{order.order_number || order.id?.slice(-8)}
                 </span>
                 <span
                   className="text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full"
@@ -177,7 +173,7 @@ const OrderCard = ({ order, onClick }) => {
                 </span>
                 <span className="text-[9px] sm:text-[10px] text-white/30 flex items-center gap-0.5">
                   <FiTime size={8} />
-                  {getRelativeTime(order.created_at)}
+                  {getRelativeTime(order.order_date || order.created_at)}
                 </span>
               </div>
             </div>
@@ -192,38 +188,30 @@ const OrderCard = ({ order, onClick }) => {
           </div>
         </div>
 
-        {/* Customer Info */}
+        {/* Delivery Address */}
         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/5">
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <FiUser size={10} className="text-white/30 shrink-0" />
+            <FiMapPin size={10} className="text-white/30 shrink-0" />
             <span className="text-[10px] sm:text-xs text-white/60 truncate">
-              {order.customer?.full_name || order.customer?.email || "Guest"}
+              {order.delivery_address || "No address provided"}
             </span>
           </div>
-          {order.school && (
-            <div className="flex items-center gap-1.5">
-              <FiMapPin size={10} className="text-white/30 shrink-0" />
-              <span className="text-[9px] sm:text-[10px] text-white/40 truncate max-w-30">
-                {order.school.school_name || order.school}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Seller Summary */}
-        {order.seller_suborders && order.seller_suborders.length > 0 && (
+        {order.seller_orders && order.seller_orders.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
-            {order.seller_suborders.slice(0, 2).map((suborder, idx) => (
+            {order.seller_orders.slice(0, 2).map((sellerOrder, idx) => (
               <span
                 key={idx}
                 className="text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/40 truncate max-w-25"
               >
-                {suborder.seller?.business_name || "Seller"}
+                {sellerOrder.seller?.business_name || `Seller ${idx + 1}`}
               </span>
             ))}
-            {order.seller_suborders.length > 2 && (
+            {order.seller_orders.length > 2 && (
               <span className="text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/40">
-                +{order.seller_suborders.length - 2} more
+                +{order.seller_orders.length - 2} more
               </span>
             )}
           </div>
@@ -264,7 +252,7 @@ const OrderDetailModal = ({ order, onClose, onConfirmStation, onConfirmDeliver, 
     }
   };
 
-  const sellerSuborders = order.seller_suborders || [];
+  const sellerOrders = order.seller_orders || [];
 
   return (
     <div
@@ -293,10 +281,10 @@ const OrderDetailModal = ({ order, onClose, onConfirmStation, onConfirmDeliver, 
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-base sm:text-lg font-black text-white truncate" style={{ fontFamily: "'Playfair Display',serif" }}>
-                Order #{order.order_reference?.slice(-12) || order.id?.slice(-12)}
+                Order #{order.order_number || order.id?.slice(-12)}
               </h3>
               <p className="text-[10px] sm:text-xs text-white/30 truncate">
-                {formatDate(order.created_at)}
+                {formatDate(order.order_date || order.created_at)}
               </p>
             </div>
           </div>
@@ -335,68 +323,39 @@ const OrderDetailModal = ({ order, onClose, onConfirmStation, onConfirmDeliver, 
             </div>
           </div>
 
-          {/* Customer Info */}
+          {/* Delivery Address */}
           <div className="bg-white/5 rounded-xl p-3 sm:p-4">
             <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white/30 mb-3">
-              Customer Information
+              Delivery Address
             </p>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <FiUser size={12} className="text-white/40" />
-                <span className="text-xs sm:text-sm text-white/80">
-                  {order.customer?.full_name || "N/A"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <FiMail size={12} className="text-white/40" />
-                <span className="text-xs sm:text-sm text-white/60">
-                  {order.customer?.email || "N/A"}
-                </span>
-              </div>
-              {order.customer?.phone && (
-                <div className="flex items-center gap-2">
-                  <FiPhone size={12} className="text-white/40" />
-                  <span className="text-xs sm:text-sm text-white/60">
-                    {order.customer.phone}
-                  </span>
-                </div>
-              )}
-              {order.shipping_address && (
-                <div className="flex items-start gap-2">
-                  <FiMapPin size={12} className="text-white/40 mt-0.5" />
-                  <span className="text-xs sm:text-sm text-white/60 flex-1">
-                    {order.shipping_address}
-                  </span>
-                </div>
-              )}
+            <div className="flex items-start gap-2">
+              <FiMapPin size={12} className="text-white/40 mt-0.5" />
+              <span className="text-xs sm:text-sm text-white/60 flex-1">
+                {order.delivery_address || "No address provided"}
+              </span>
             </div>
           </div>
 
-          {/* School Info */}
-          {order.school && (
+          {/* Order Notes */}
+          {order.order_notes && (
             <div className="bg-white/5 rounded-xl p-3 sm:p-4">
-              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white/30 mb-3">
-                Campus Information
+              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white/30 mb-2">
+                Order Notes
               </p>
-              <div className="flex items-center gap-2">
-                <FiMapPin size={12} className="text-white/40" />
-                <span className="text-xs sm:text-sm text-white/80">
-                  {order.school.school_name || order.school}
-                </span>
-              </div>
+              <p className="text-xs text-white/60">{order.order_notes}</p>
             </div>
           )}
 
           {/* Seller Tabs */}
-          {sellerSuborders.length > 0 && (
+          {sellerOrders.length > 0 && (
             <div>
               <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white/30 mb-3">
-                Sellers & Items ({sellerSuborders.length})
+                Sellers & Items ({sellerOrders.length})
               </p>
               
               {/* Tab Bar */}
               <div className="flex gap-1 border-b border-white/10 mb-3 overflow-x-auto pb-px">
-                {sellerSuborders.map((suborder, idx) => (
+                {sellerOrders.map((sellerOrder, idx) => (
                   <button
                     key={idx}
                     onClick={() => setActiveSellerTab(idx)}
@@ -406,26 +365,38 @@ const OrderDetailModal = ({ order, onClose, onConfirmStation, onConfirmDeliver, 
                         : "text-white/40 hover:text-white/60"
                     }`}
                   >
-                    {suborder.seller?.business_name || `Seller ${idx + 1}`}
+                    {sellerOrder.seller?.business_name || `Seller ${idx + 1}`}
                   </button>
                 ))}
               </div>
 
               {/* Active Seller Content */}
-              {sellerSuborders[activeSellerTab] && (
+              {sellerOrders[activeSellerTab] && (
                 <div className="space-y-4">
                   {/* Suborder Summary */}
                   <div className="bg-white/5 rounded-xl p-3 sm:p-4">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-xs text-white/60">Subtotal</span>
                       <span className="text-sm font-bold text-white">
-                        {formatCurrency(sellerSuborders[activeSellerTab].subtotal_amount)}
+                        {formatCurrency(sellerOrders[activeSellerTab].subtotal)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-xs text-white/60">Delivery Fee</span>
+                      <span className="text-xs text-white/60">Platform Fee</span>
                       <span className="text-sm font-bold text-white">
-                        {formatCurrency(sellerSuborders[activeSellerTab].delivery_fee)}
+                        {formatCurrency(sellerOrders[activeSellerTab].platform_fee)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/10">
+                      <span className="text-xs text-white/60">Seller Credit</span>
+                      <span className="text-sm font-bold text-[#10B981]">
+                        {formatCurrency(sellerOrders[activeSellerTab].seller_credit)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-xs text-white/60">Order Status</span>
+                      <span className="text-xs font-medium text-white">
+                        {ORDER_STATUS[sellerOrders[activeSellerTab].order_status]?.label || sellerOrders[activeSellerTab].order_status}
                       </span>
                     </div>
                   </div>
@@ -435,11 +406,8 @@ const OrderDetailModal = ({ order, onClose, onConfirmStation, onConfirmDeliver, 
                     <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider">
                       Items
                     </p>
-                    {sellerSuborders[activeSellerTab].items?.map((item, idx) => {
-                      const itemStatus = ORDER_ITEM_STATUS[item.status] || ORDER_ITEM_STATUS.pending;
-                      const isAtStation = item.status === "at_station";
-                      const isShipped = item.status === "shipped_to_station";
-                      const isDelivered = item.status === "delivered";
+                    {sellerOrders[activeSellerTab].items?.map((item, idx) => {
+                      const itemStatus = ORDER_ITEM_STATUS[item.item_status] || ORDER_ITEM_STATUS.pending;
                       
                       return (
                         <div
@@ -447,110 +415,92 @@ const OrderDetailModal = ({ order, onClose, onConfirmStation, onConfirmDeliver, 
                           className="bg-white/5 rounded-xl p-3"
                           style={{ borderLeft: `3px solid ${itemStatus.color}` }}
                         >
-                          <div className="flex justify-between items-start mb-2">
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-white">
-                                {item.product?.name || "Product"}
-                              </p>
-                              <p className="text-[10px] text-white/40">
-                                Quantity: {item.quantity} × {formatCurrency(item.unit_price)}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-bold text-white">
-                                {formatCurrency(item.subtotal)}
-                              </p>
-                              <span
-                                className="text-[8px] sm:text-[9px] font-medium px-1.5 py-0.5 rounded-full"
-                                style={{ background: `${itemStatus.color}20`, color: itemStatus.color }}
-                              >
-                                {itemStatus.label}
-                              </span>
+                          <div className="flex gap-3">
+                            {/* Product Image */}
+                            {item.product_image && (
+                              <img
+                                src={item.product_image}
+                                alt={item.product_name}
+                                className="w-16 h-16 rounded-lg object-cover shrink-0"
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="text-sm font-medium text-white truncate">
+                                    {item.product_name}
+                                  </p>
+                                  <p className="text-[10px] text-white/40">
+                                    Qty: {item.quantity} × {formatCurrency(item.unit_price)}
+                                  </p>
+                                </div>
+                                <div className="text-right ml-2">
+                                  <p className="text-sm font-bold text-white">
+                                    {formatCurrency(item.total_price)}
+                                  </p>
+                                  <span
+                                    className="text-[8px] sm:text-[9px] font-medium px-1.5 py-0.5 rounded-full"
+                                    style={{ background: `${itemStatus.color}20`, color: itemStatus.color }}
+                                  >
+                                    {itemStatus.label}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              {/* Platform Fee */}
+                              {item.platform_fee > 0 && (
+                                <p className="text-[9px] text-white/40 mt-1">
+                                  Platform Fee: {formatCurrency(item.platform_fee)}
+                                </p>
+                              )}
+
+                              {/* Action Buttons */}
+                              {item.item_status === "pending" && (
+                                <div className="mt-2 flex gap-2">
+                                  <button
+                                    onClick={() => handleConfirmStation(item.id, sellerOrders[activeSellerTab].seller?.business_name)}
+                                    disabled={actionLoading === item.id}
+                                    className="flex items-center justify-center gap-1.5 py-1 px-3 rounded-lg text-[10px] sm:text-xs font-bold transition-all active:scale-[0.97] disabled:opacity-40"
+                                    style={{
+                                      background: "rgba(139,92,246,0.1)",
+                                      border: "1px solid rgba(139,92,246,0.3)",
+                                      color: "#8B5CF6",
+                                    }}
+                                  >
+                                    {actionLoading === item.id ? (
+                                      <FiLoader size={10} className="animate-spin" />
+                                    ) : (
+                                      <FiCheckCircle size={10} />
+                                    )}
+                                    Confirm Arrival
+                                  </button>
+                                  <button
+                                    onClick={() => handleConfirmDeliver(item.id, sellerOrders[activeSellerTab].seller?.business_name)}
+                                    disabled={actionLoading === item.id}
+                                    className="flex items-center justify-center gap-1.5 py-1 px-3 rounded-lg text-[10px] sm:text-xs font-bold transition-all active:scale-[0.97] disabled:opacity-40"
+                                    style={{
+                                      background: "rgba(16,185,129,0.1)",
+                                      border: "1px solid rgba(16,185,129,0.3)",
+                                      color: "#10B981",
+                                    }}
+                                  >
+                                    {actionLoading === item.id ? (
+                                      <FiLoader size={10} className="animate-spin" />
+                                    ) : (
+                                      <FiTruck size={10} />
+                                    )}
+                                    Mark Delivered
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
-                          
-                          {/* Tracking Info */}
-                          {item.tracking && (
-                            <div className="mt-2 pt-2 border-t border-white/10">
-                              <p className="text-[9px] text-white/40 flex items-center gap-1">
-                                <FiTruck size={8} />
-                                Tracking: {item.tracking.tracking_number || "N/A"}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Action Buttons */}
-                          {!isDelivered && (
-                            <div className="mt-3 flex gap-2">
-                              {isShipped && (
-                                <button
-                                  onClick={() => handleConfirmStation(item.id, sellerSuborders[activeSellerTab].seller?.business_name)}
-                                  disabled={actionLoading === item.id}
-                                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all active:scale-[0.97] disabled:opacity-40"
-                                  style={{
-                                    background: "rgba(139,92,246,0.1)",
-                                    border: "1px solid rgba(139,92,246,0.3)",
-                                    color: "#8B5CF6",
-                                  }}
-                                >
-                                  {actionLoading === item.id ? (
-                                    <FiLoader size={10} className="animate-spin" />
-                                  ) : (
-                                    <FiCheckCircle size={10} />
-                                  )}
-                                  Confirm Arrival at Station
-                                </button>
-                              )}
-                              {isAtStation && (
-                                <button
-                                  onClick={() => handleConfirmDeliver(item.id, sellerSuborders[activeSellerTab].seller?.business_name)}
-                                  disabled={actionLoading === item.id}
-                                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all active:scale-[0.97] disabled:opacity-40"
-                                  style={{
-                                    background: "rgba(16,185,129,0.1)",
-                                    border: "1px solid rgba(16,185,129,0.3)",
-                                    color: "#10B981",
-                                  }}
-                                >
-                                  {actionLoading === item.id ? (
-                                    <FiLoader size={10} className="animate-spin" />
-                                  ) : (
-                                    <FiTruck size={10} />
-                                  )}
-                                  Mark as Delivered
-                                </button>
-                              )}
-                            </div>
-                          )}
                         </div>
                       );
                     })}
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Delivery Timeline */}
-          {order.delivery_tracking && (
-            <div className="bg-white/5 rounded-xl p-3 sm:p-4">
-              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white/30 mb-3">
-                Delivery Timeline
-              </p>
-              <div className="space-y-3">
-                {order.delivery_tracking.map((event, idx) => (
-                  <div key={idx} className="flex items-start gap-2.5">
-                    <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 bg-[#FF8C00]" />
-                    <div className="flex-1">
-                      <p className="text-xs text-white/80">{event.status}</p>
-                      <p className="text-[9px] text-white/30">{formatDate(event.timestamp)}</p>
-                      {event.location && (
-                        <p className="text-[9px] text-white/40 mt-0.5">{event.location}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </div>
@@ -615,6 +565,7 @@ const FilterBar = ({ filters, onFilterChange, onClear, schools, sellers, loading
             >
               <option value="all">All Order Status</option>
               <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
               <option value="processing">Processing</option>
               <option value="shipped">Shipped</option>
               <option value="delivered">Delivered</option>
@@ -751,25 +702,27 @@ const AdminOrderManagement = () => {
         method: "GET",
       });
       
-      // Handle response structure (could be { data: [], total, page, total_pages } or direct array)
+      // Handle API response structure: { status, status_code, message, data: { orders, total, page, per_page, pages } }
       let ordersData = [];
       let total = 0;
       let pages = 1;
 
-      if (Array.isArray(response)) {
+      if (response?.data?.orders && Array.isArray(response.data.orders)) {
+        ordersData = response.data.orders;
+        total = response.data.total || response.data.orders.length;
+        pages = response.data.pages || Math.ceil(total / itemsPerPage);
+      } else if (Array.isArray(response)) {
         ordersData = response;
         total = response.length;
         pages = Math.ceil(total / itemsPerPage);
-      } else if (response.data && Array.isArray(response.data)) {
+      } else if (response?.orders && Array.isArray(response.orders)) {
+        ordersData = response.orders;
+        total = response.total || response.orders.length;
+        pages = response.pages || Math.ceil(total / itemsPerPage);
+      } else if (response?.data && Array.isArray(response.data)) {
         ordersData = response.data;
         total = response.total || response.data.length;
         pages = response.total_pages || Math.ceil(total / itemsPerPage);
-      } else if (response.orders && Array.isArray(response.orders)) {
-        ordersData = response.orders;
-        total = response.total || response.orders.length;
-        pages = response.total_pages || Math.ceil(total / itemsPerPage);
-      } else {
-        ordersData = [];
       }
 
       setOrders(ordersData);
@@ -813,7 +766,7 @@ const AdminOrderManagement = () => {
       const response = await ApiService.makeRequest(`/admin/orders/${orderId}`, {
         method: "GET",
       });
-      return response;
+      return response?.data || response;
     } catch (err) {
       console.error("fetchOrderDetail error:", err);
       showToast(err.message || "Failed to load order details", "error");
@@ -910,7 +863,7 @@ const AdminOrderManagement = () => {
   const stats = {
     total: totalOrders,
     pending: orders.filter(o => o.order_status === "pending").length,
-    processing: orders.filter(o => o.order_status === "processing").length,
+    confirmed: orders.filter(o => o.order_status === "confirmed").length,
     delivered: orders.filter(o => o.order_status === "delivered").length,
   };
 
@@ -987,9 +940,9 @@ const AdminOrderManagement = () => {
           color="#F59E0B"
         />
         <StatsCard
-          title="Processing"
-          value={stats.processing}
-          icon={FiLoader}
+          title="Confirmed"
+          value={stats.confirmed}
+          icon={FiCheckCircle}
           color="#3B82F6"
         />
         <StatsCard
