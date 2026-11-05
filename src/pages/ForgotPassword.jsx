@@ -9,8 +9,8 @@ import logo from "../assets/images/logo.png";
 const inputCls = (err) =>
   `flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-all duration-200 ${
     err
-      ? "border-red-500/50 bg-red-500/5"
-      : "border-white/8 bg-white/4 focus-within:border-[#FF8C00]/50 focus-within:bg-white/6 focus-within:shadow-[0_0_0_3px_rgba(255,140,0,0.08)]"
+      ? "border-brand/40 bg-brand/5"
+      : "border-ink/10 bg-sand focus-within:border-[#0E0E10]/50 focus-within:bg-sand focus-within:shadow-[0_0_0_3px_rgba(255,140,0,0.08)]"
   }`;
 
 /* ── Step 1: Email ── */
@@ -33,32 +33,32 @@ const StepEmail = ({ onNext }) => {
     <div className="space-y-6">
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-2"
         style={{ background: "rgba(255,140,0,0.1)", border: "1px solid rgba(255,140,0,0.2)" }}>
-        <FiMail size={24} className="text-[#FF8C00]" />
+        <FiMail size={24} className="text-[#0E0E10]" />
       </div>
       <div>
-        <h2 className="text-2xl font-black text-white mb-1" style={{ fontFamily: "'Playfair Display',serif" }}>Forgot Password?</h2>
-        <p className="text-sm text-white/30">Enter your admin email to receive a reset code.</p>
+        <h2 className="text-2xl font-semibold text-ink mb-1" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>Forgot Password?</h2>
+        <p className="text-sm text-ink/30">Enter your admin email to receive a reset code.</p>
       </div>
       {error && (
         <div className="flex items-center gap-2 rounded-2xl px-4 py-3" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
-          <FiAlertCircle size={14} className="text-red-400 shrink-0" />
-          <p className="text-red-400 text-sm">{error}</p>
+          <FiAlertCircle size={14} className="text-brand shrink-0" />
+          <p className="text-brand text-sm">{error}</p>
         </div>
       )}
       <form onSubmit={submit} className="space-y-4" noValidate>
         <div>
-          <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-2">Email Address</label>
+          <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-ink/30 mb-2">Email Address</label>
           <div className={inputCls(!!error)}>
-            <FiMail size={15} className="text-white/25 shrink-0" />
+            <FiMail size={15} className="text-ink/25 shrink-0" />
             <input type="email" placeholder="admin@jovomart.com" value={email}
               onChange={(e) => { setEmail(e.target.value); setError(""); }}
-              className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20" />
+              className="flex-1 text-sm text-ink outline-none bg-transparent placeholder-white/20" />
           </div>
         </div>
         <button type="submit" disabled={loading}
-          className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm text-white transition-all hover:opacity-90 disabled:opacity-50"
-          style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)", boxShadow: "0 6px 28px rgba(180,34,37,0.3)" }}>
-          {loading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Sending...</> : "Send Reset Code"}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-semibold text-sm text-ink transition-all hover:opacity-90 disabled:opacity-50"
+          style={{ background: "linear-gradient(135deg,#0E0E10,#0E0E10)", boxShadow: "0 6px 28px rgba(180,34,37,0.3)" }}>
+          {loading ? <><div className="w-4 h-4 border-2 border-ink/10 border-t-white rounded-full animate-spin" /> Sending...</> : "Send Reset Code"}
         </button>
       </form>
     </div>
@@ -113,20 +113,20 @@ const StepCode = ({ email, onNext, onBack }) => {
 
   return (
     <div className="space-y-6">
-      <button onClick={onBack} className="flex items-center gap-1.5 text-white/30 hover:text-white/60 text-sm transition-colors">
+      <button onClick={onBack} className="flex items-center gap-1.5 text-ink/30 hover:text-ink/60 text-sm transition-colors">
         <FiArrowLeft size={14} /> Back
       </button>
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "rgba(255,140,0,0.1)", border: "1px solid rgba(255,140,0,0.2)" }}>
-        <FiMail size={24} className="text-[#FF8C00]" />
+        <FiMail size={24} className="text-[#0E0E10]" />
       </div>
       <div>
-        <h2 className="text-2xl font-black text-white mb-1" style={{ fontFamily: "'Playfair Display',serif" }}>Check Your Email</h2>
-        <p className="text-sm text-white/30">We sent a 6-digit code to <strong className="text-white/60">{email}</strong></p>
+        <h2 className="text-2xl font-semibold text-ink mb-1" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>Check Your Email</h2>
+        <p className="text-sm text-ink/30">We sent a 6-digit code to <strong className="text-ink/60">{email}</strong></p>
       </div>
       {error && (
         <div className="flex items-center gap-2 rounded-2xl px-4 py-3" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
-          <FiAlertCircle size={14} className="text-red-400 shrink-0" />
-          <p className="text-red-400 text-sm">{error}</p>
+          <FiAlertCircle size={14} className="text-brand shrink-0" />
+          <p className="text-brand text-sm">{error}</p>
         </div>
       )}
       <form onSubmit={submit} noValidate>
@@ -137,26 +137,26 @@ const StepCode = ({ email, onNext, onBack }) => {
               onChange={e => onChange(i, e.target.value)}
               onKeyDown={e => onKeyDown(i, e)}
               disabled={loading}
-              className={`w-12 h-14 text-center text-xl font-black rounded-2xl border-2 outline-none transition-all bg-transparent ${
-                d ? "border-[#FF8C00]/60 text-[#FF8C00]" : "border-white/10 text-white focus:border-[#FF8C00]/40"
+              className={`w-12 h-14 text-center text-xl font-semibold rounded-2xl border-2 outline-none transition-all bg-transparent ${
+                d ? "border-[#0E0E10]/60 text-[#0E0E10]" : "border-ink/10 text-ink focus:border-[#0E0E10]/40"
               }`} />
           ))}
         </div>
         <div className="text-center mb-5">
           {timeLeft > 0
-            ? <p className="text-xs text-white/25">Expires in <span className={`font-black ${timeLeft <= 60 ? "text-red-400" : "text-[#FF8C00]"}`}>{fmt(timeLeft)}</span></p>
-            : <p className="text-xs text-red-400 font-semibold">Code expired.</p>}
+            ? <p className="text-xs text-ink/25">Expires in <span className={`font-semibold ${timeLeft <= 60 ? "text-brand" : "text-[#0E0E10]"}`}>{fmt(timeLeft)}</span></p>
+            : <p className="text-xs text-brand font-semibold">Code expired.</p>}
         </div>
         <button type="submit" disabled={loading || code.join("").length !== 6 || timeLeft <= 0}
-          className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm text-white transition-all hover:opacity-90 disabled:opacity-40"
-          style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)", boxShadow: "0 6px 28px rgba(180,34,37,0.3)" }}>
-          {loading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying...</> : "Verify Code"}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-semibold text-sm text-ink transition-all hover:opacity-90 disabled:opacity-40"
+          style={{ background: "linear-gradient(135deg,#0E0E10,#0E0E10)", boxShadow: "0 6px 28px rgba(180,34,37,0.3)" }}>
+          {loading ? <><div className="w-4 h-4 border-2 border-ink/10 border-t-white rounded-full animate-spin" /> Verifying...</> : "Verify Code"}
         </button>
       </form>
       <div className="flex items-center justify-center gap-2">
-        <p className="text-xs text-white/25">Didn't receive it?</p>
+        <p className="text-xs text-ink/25">Didn't receive it?</p>
         <button onClick={resend} disabled={resending || timeLeft > 540}
-          className="flex items-center gap-1 text-xs font-black text-[#FF8C00]/60 hover:text-[#FF8C00] disabled:opacity-30 transition-colors">
+          className="flex items-center gap-1 text-xs font-semibold text-[#0E0E10]/60 hover:text-[#0E0E10] disabled:opacity-30 transition-colors">
           <FiRefreshCw size={11} className={resending ? "animate-spin" : ""} />
           {resending ? "Sending..." : "Resend code"}
         </button>
@@ -193,20 +193,20 @@ const StepNewPassword = ({ email, code, onBack, onSuccess }) => {
 
   return (
     <div className="space-y-6">
-      <button onClick={onBack} className="flex items-center gap-1.5 text-white/30 hover:text-white/60 text-sm transition-colors">
+      <button onClick={onBack} className="flex items-center gap-1.5 text-ink/30 hover:text-ink/60 text-sm transition-colors">
         <FiArrowLeft size={14} /> Back
       </button>
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "rgba(255,140,0,0.1)", border: "1px solid rgba(255,140,0,0.2)" }}>
-        <FiLock size={24} className="text-[#FF8C00]" />
+        <FiLock size={24} className="text-[#0E0E10]" />
       </div>
       <div>
-        <h2 className="text-2xl font-black text-white mb-1" style={{ fontFamily: "'Playfair Display',serif" }}>New Password</h2>
-        <p className="text-sm text-white/30">Create a strong new password for <strong className="text-white/60">{email}</strong></p>
+        <h2 className="text-2xl font-semibold text-ink mb-1" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>New Password</h2>
+        <p className="text-sm text-ink/30">Create a strong new password for <strong className="text-ink/60">{email}</strong></p>
       </div>
       {errors.general && (
         <div className="flex items-center gap-2 rounded-2xl px-4 py-3" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
-          <FiAlertCircle size={14} className="text-red-400 shrink-0" />
-          <p className="text-red-400 text-sm">{errors.general}</p>
+          <FiAlertCircle size={14} className="text-brand shrink-0" />
+          <p className="text-brand text-sm">{errors.general}</p>
         </div>
       )}
       <form onSubmit={submit} className="space-y-4" noValidate>
@@ -215,26 +215,26 @@ const StepNewPassword = ({ email, code, onBack, onSuccess }) => {
           { key: "confirmPassword", label: "Confirm Password", placeholder: "Repeat your password" },
         ].map(({ key, label, placeholder }) => (
           <div key={key}>
-            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-2">{label}</label>
+            <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-ink/30 mb-2">{label}</label>
             <div className={inputCls(errors[key])}>
-              <FiLock size={15} className="text-white/25 shrink-0" />
+              <FiLock size={15} className="text-ink/25 shrink-0" />
               <input type={showPw ? "text" : "password"} placeholder={placeholder}
                 value={form[key]}
                 onChange={(e) => { setForm(p => ({ ...p, [key]: e.target.value })); setErrors(p => ({ ...p, [key]: "" })); }}
-                className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20" />
+                className="flex-1 text-sm text-ink outline-none bg-transparent placeholder-white/20" />
               {key === "newPassword" && (
-                <button type="button" onClick={() => setShowPw(!showPw)} tabIndex={-1} className="text-white/25 hover:text-white/60 transition-colors">
+                <button type="button" onClick={() => setShowPw(!showPw)} tabIndex={-1} className="text-ink/25 hover:text-ink/60 transition-colors">
                   {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               )}
             </div>
-            {errors[key] && <p className="text-xs text-red-400 mt-1.5 ml-1">{errors[key]}</p>}
+            {errors[key] && <p className="text-xs text-brand mt-1.5 ml-1">{errors[key]}</p>}
           </div>
         ))}
         <button type="submit" disabled={loading}
-          className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm text-white transition-all hover:opacity-90 disabled:opacity-50 mt-2"
-          style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)", boxShadow: "0 6px 28px rgba(180,34,37,0.3)" }}>
-          {loading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Updating...</> : "Update Password"}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-semibold text-sm text-ink transition-all hover:opacity-90 disabled:opacity-50 mt-2"
+          style={{ background: "linear-gradient(135deg,#0E0E10,#0E0E10)", boxShadow: "0 6px 28px rgba(180,34,37,0.3)" }}>
+          {loading ? <><div className="w-4 h-4 border-2 border-ink/10 border-t-white rounded-full animate-spin" /> Updating...</> : "Update Password"}
         </button>
       </form>
     </div>
@@ -250,7 +250,7 @@ const ForgotPassword = () => {
   const steps = ["Email", "Verify Code", "New Password"];
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-12" style={{ background: "#0a0a0f" }}>
+    <div className="min-h-screen flex items-center justify-center px-6 py-12" style={{ background: "#FBEFE3" }}>
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex justify-center mb-10">
@@ -258,19 +258,19 @@ const ForgotPassword = () => {
         </div>
 
         {/* Card */}
-        <div className="rounded-3xl p-8" style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.06)", boxShadow: "0 24px 60px rgba(0,0,0,0.5)" }}>
+        <div className="rounded-3xl p-8" style={{ background: "#0d0d14", border: "1px solid rgba(14,14,16,0.006)", boxShadow: "0 24px 60px rgba(14,14,16,0.10)" }}>
           {/* Step dots */}
           <div className="flex items-center justify-center gap-2 mb-8">
             {steps.map((_, i) => {
               const s = i + 1;
               return (
                 <div key={s} className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-all ${
-                    step > s ? "text-white" : step === s ? "text-white" : "text-white/20"
-                  }`} style={step >= s ? { background: "linear-gradient(135deg,#B42225,#FF8C00)" } : { background: "rgba(255,255,255,0.05)" }}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+                    step > s ? "text-ink" : step === s ? "text-ink" : "text-ink/20"
+                  }`} style={step >= s ? { background: "linear-gradient(135deg,#0E0E10,#0E0E10)" } : { background: "rgba(14,14,16,0.005)" }}>
                     {step > s ? <Check size={12} /> : s}
                   </div>
-                  {i < 2 && <div className="w-6 h-px rounded-full" style={{ background: step > s ? "linear-gradient(90deg,#B42225,#FF8C00)" : "rgba(255,255,255,0.08)" }} />}
+                  {i < 2 && <div className="w-6 h-px rounded-full" style={{ background: step > s ? "linear-gradient(90deg,#0E0E10,#0E0E10)" : "rgba(14,14,16,0.008)" }} />}
                 </div>
               );
             })}
@@ -282,7 +282,7 @@ const ForgotPassword = () => {
             onSuccess={() => navigate("/login", { state: { message: "Password updated! Please sign in." } })} />}
         </div>
 
-        <p className="text-center text-xs text-white/15 mt-6">JOVO Admin Panel — Restricted Access</p>
+        <p className="text-center text-xs text-ink/15 mt-6">JOVO Admin Panel - Restricted Access</p>
       </div>
     </div>
   );

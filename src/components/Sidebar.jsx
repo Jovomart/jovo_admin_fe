@@ -1,10 +1,10 @@
 // src/components/Sidebar.jsx
-import { useContext, useState } from "react";
+import { useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import logo from "../assets/images/logo.png";
 import {
-  FiGrid, FiUsers, FiShoppingBag, FiTruck,
+  FiGrid, FiTruck,
   FiLogOut, FiChevronRight, FiX, FiSettings,
 } from "react-icons/fi";
 import { MdStorefront } from "react-icons/md";
@@ -29,54 +29,52 @@ const Sidebar = ({ mobileOpen, onClose }) => {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
+      <div className="flex items-center justify-between px-5 py-5">
         <div className="flex items-center gap-3">
-          <img src={logo} alt="JOVO" style={{ width: "57px", height: "40px", objectFit: "cover" }} />
+          <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-white ring-1 ring-ink/[.06]">
+            <img src={logo} alt="JOVO" style={{ width: "34px", height: "24px", objectFit: "cover" }} />
+          </div>
           <div>
-            <p className="text-[10px] font-bold text-white/30 tracking-[3px] uppercase">Admin</p>
-            <p className="text-[10px] font-bold text-white/20 tracking-[1px]">Panel</p>
+            <p className="font-display text-[13px] font-semibold leading-tight text-ink">JOVO</p>
+            <p className="text-[10px] font-medium tracking-[0.2em] uppercase text-ink/35">Admin</p>
           </div>
         </div>
-        <button onClick={onClose} className="lg:hidden w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition">
+        <button onClick={onClose} className="lg:hidden w-8 h-8 rounded-full bg-ink/5 flex items-center justify-center text-ink/50 hover:text-ink transition">
           <FiX size={15} />
         </button>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        <p className="text-[9px] font-bold tracking-[3px] uppercase text-white/20 px-3 mb-3">Navigation</p>
+      <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+        <p className="admin-label px-3 mb-2">Navigation</p>
         {navItems.map(({ label, icon, to }) => {
           const active = location.pathname === to || location.pathname.startsWith(to + "/");
           return (
             <button key={to} onClick={() => { navigate(to); onClose?.(); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group ${
-                active
-                  ? "text-white"
-                  : "text-white/40 hover:text-white/70 hover:bg-white/5"
-              }`}
-              style={active ? { background: "linear-gradient(135deg,rgba(180,34,37,0.3),rgba(255,140,0,0.15))", boxShadow: "0 0 0 1px rgba(180,34,37,0.3)" } : {}}>
-              <span className={active ? "text-[#FF8C00]" : "text-white/30 group-hover:text-white/50 transition-colors"}>{icon}</span>
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-[13px] font-medium transition-colors duration-200 ${
+                active ? "bg-ink text-cream" : "text-ink/55 hover:text-ink hover:bg-ink/5"
+              }`}>
+              <span className={active ? "text-cream" : "text-ink/35"}>{icon}</span>
               {label}
-              {active && <FiChevronRight size={13} className="ml-auto text-white/30" />}
+              {active && <FiChevronRight size={13} className="ml-auto text-cream/60" />}
             </button>
           );
         })}
       </nav>
 
       {/* Admin profile + logout */}
-      <div className="px-3 pb-4 border-t border-white/5 pt-4">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/3 mb-2">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0"
-            style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}>
+      <div className="px-3 pb-4 pt-4">
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white ring-1 ring-ink/[.05] mb-2">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-ink text-[11px] font-semibold shrink-0 bg-lilac">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white/80 truncate">{displayName}</p>
-            <p className="text-[10px] text-white/30 truncate">{admin?.email}</p>
+            <p className="text-[12px] font-semibold text-ink truncate">{displayName}</p>
+            <p className="text-[10px] text-ink/40 truncate">{admin?.email}</p>
           </div>
         </div>
         <button onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500 hover:text-white transition-all duration-200">
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full text-[12px] font-semibold text-ink/60 bg-white/70 ring-1 ring-ink/[.06] hover:bg-ink hover:text-cream transition-all duration-200">
           <FiLogOut size={14} /> Sign Out
         </button>
       </div>
@@ -86,16 +84,15 @@ const Sidebar = ({ mobileOpen, onClose }) => {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-60 shrink-0 h-screen sticky top-0 border-r border-white/5"
-        style={{ background: "#0d0d14" }}>
+      <aside className="hidden lg:flex flex-col w-[244px] shrink-0 h-screen sticky top-0 border-r border-ink/[.07] bg-cream-light">
         <SidebarContent />
       </aside>
 
       {/* Mobile overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-          <aside className="relative w-64 h-full border-r border-white/5 flex flex-col" style={{ background: "#0d0d14" }}>
+          <div className="absolute inset-0 bg-ink/30 backdrop-blur-sm" onClick={onClose} />
+          <aside className="relative w-[264px] h-full border-r border-ink/[.07] flex flex-col bg-cream-light">
             <SidebarContent />
           </aside>
         </div>

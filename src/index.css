@@ -1,6 +1,100 @@
 @import "tailwindcss";
 
+@theme {
+  --color-ink: #0e0e10;
+  --color-cream: #fbefe3;
+  --color-cream-deep: #f6e2cf;
+  --color-cream-light: #fdf8f2;
+  --color-sand: #f7f3ec;
+  --color-sky: #d9ebf8;
+  --color-sky-deep: #c2dff3;
+  --color-mint: #d3e8d9;
+  --color-mint-deep: #b7dbc3;
+  --color-lilac: #dccbf6;
+  --color-lilac-deep: #c6acef;
+  --color-peach: #fbd9c2;
+  --color-brand: #b42225;
 
+  --font-display: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Sora", system-ui, sans-serif;
+
+  --radius-brand-sm: 10px;
+  --radius-brand-md: 16px;
+  --radius-brand-lg: 24px;
+}
 
 * { scrollbar-width: none; -ms-overflow-style: none; }
 *::-webkit-scrollbar { display: none; }
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+  }
+
+  h1, h2, h3, h4, h5 { font-family: var(--font-display); letter-spacing: -0.015em; }
+
+  input, textarea, select {
+    outline: none;
+    border-width: 0;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  input:focus, textarea:focus, select:focus,
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: none;
+  }
+
+  ::selection { background: #dccbf6; color: #0e0e10; }
+}
+
+@layer components {
+  .admin-card {
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 1px 2px rgba(14, 14, 16, .04), 0 18px 40px -28px rgba(14, 14, 16, .25);
+  }
+
+  .admin-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: rgba(14, 14, 16, .4);
+  }
+}
+
+/* Loader + entrance motion */
+@keyframes admin-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.06); opacity: .85; }
+}
+@keyframes admin-bar {
+  0% { width: 0%; }
+  40% { width: 60%; }
+  70% { width: 80%; }
+  100% { width: 100%; }
+}
+@keyframes d1 { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+@keyframes d2 { 0%, 100% { transform: scale(0); } 20%, 60% { transform: scale(1); } }
+@keyframes d3 { 0%, 20%, 100% { transform: scale(0); } 60% { transform: scale(1); } }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-up { animation: fadeUp .35s cubic-bezier(.22,.61,.36,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}

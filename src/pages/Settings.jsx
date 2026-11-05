@@ -12,8 +12,8 @@ const GENDER_OPTIONS = ["MALE", "FEMALE"];
 const inputCls = (err) =>
   `flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-all duration-200 ${
     err
-      ? "border-red-500/40 bg-red-500/5"
-      : "border-white/8 bg-white/4 focus-within:border-[#FF8C00]/50 focus-within:bg-white/6 focus-within:shadow-[0_0_0_3px_rgba(255,140,0,0.08)]"
+      ? "border-red-500/40 bg-brand/5"
+      : "border-ink/10 bg-sand focus-within:border-[#0E0E10]/50 focus-within:bg-sand focus-within:shadow-[0_0_0_3px_rgba(255,140,0,0.08)]"
   }`;
 
 const Settings = () => {
@@ -132,7 +132,7 @@ const Settings = () => {
             background: toast.type === "error" ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.15)",
             border: `1px solid ${toast.type === "error" ? "rgba(239,68,68,0.3)" : "rgba(16,185,129,0.3)"}`,
             color: toast.type === "error" ? "#EF4444" : "#10B981",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            boxShadow: "0 8px 32px rgba(14,14,16,0.10)",
           }}>
           {toast.type === "error" ? <FiAlertCircle size={15} /> : <FiCheck size={15} />}
           {toast.msg}
@@ -140,35 +140,35 @@ const Settings = () => {
       )}
 
       <div>
-        <h1 className="text-2xl font-black text-white" style={{ fontFamily: "'Playfair Display',serif" }}>Settings</h1>
-        <p className="text-sm text-white/30 mt-0.5">Manage your admin account and platform settings</p>
+        <h1 className="text-2xl font-semibold text-ink" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>Settings</h1>
+        <p className="text-sm text-ink/30 mt-0.5">Manage your admin account and platform settings</p>
       </div>
 
       {/* Profile banner */}
       <div className="rounded-3xl p-5 flex items-center gap-5 relative overflow-hidden"
         style={{ background: "linear-gradient(135deg,#0f0a00,#1a0f00,#2a1500)", border: "1px solid rgba(255,140,0,0.1)" }}>
         <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full pointer-events-none opacity-10"
-          style={{ background: "radial-gradient(circle,#FF8C00,transparent)" }} />
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-lg font-black shrink-0 relative z-10"
-          style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)", boxShadow: "0 6px 20px rgba(180,34,37,0.4)" }}>
+          style={{ background: "radial-gradient(circle,#0E0E10,transparent)" }} />
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-ink text-lg font-semibold shrink-0 relative z-10"
+          style={{ background: "linear-gradient(135deg,#0E0E10,#0E0E10)", boxShadow: "0 6px 20px rgba(180,34,37,0.4)" }}>
           {initials}
         </div>
         <div className="relative z-10">
-          <p className="text-base font-black text-white" style={{ fontFamily: "'Playfair Display',serif" }}>{displayName}</p>
-          <p className="text-xs text-white/40">{admin?.email}</p>
-          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full mt-1 inline-block"
-            style={{ background: "rgba(255,140,0,0.15)", border: "1px solid rgba(255,140,0,0.25)", color: "#FF8C00" }}>
+          <p className="text-base font-semibold text-ink" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>{displayName}</p>
+          <p className="text-xs text-ink/40">{admin?.email}</p>
+          <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full mt-1 inline-block"
+            style={{ background: "rgba(255,140,0,0.15)", border: "1px solid rgba(255,140,0,0.25)", color: "#0E0E10" }}>
             🔐 Administrator
           </span>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-2xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+      <div className="flex gap-1 p-1 rounded-2xl" style={{ background: "rgba(14,14,16,0.004)", border: "1px solid rgba(14,14,16,0.006)" }}>
         {tabs.map(({ key, label, icon }) => (
           <button key={key} onClick={() => setActiveTab(key)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black transition-all ${
-              activeTab === key ? "text-white" : "text-white/30 hover:text-white/60"
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              activeTab === key ? "text-ink" : "text-ink/30 hover:text-ink/60"
             }`}
             style={activeTab === key ? { background: "linear-gradient(135deg,rgba(180,34,37,0.4),rgba(255,140,0,0.2))", border: "1px solid rgba(180,34,37,0.3)" } : {}}>
             {icon} {label}
@@ -178,33 +178,33 @@ const Settings = () => {
 
       {/* ── PROFILE TAB ── */}
       {activeTab === "profile" && (
-        <div className="rounded-3xl p-6 space-y-1" style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <h3 className="text-base font-black text-white mb-4" style={{ fontFamily: "'Playfair Display',serif" }}>Account Information</h3>
+        <div className="rounded-3xl p-6 space-y-1" style={{ background: "#0d0d14", border: "1px solid rgba(14,14,16,0.006)" }}>
+          <h3 className="text-base font-semibold text-ink mb-4" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>Account Information</h3>
           {[
             { label: "Full Name",  value: displayName },
-            { label: "Email",      value: admin?.email || "—" },
-            { label: "Username",   value: admin?.username ? `@${admin.username}` : "—" },
+            { label: "Email",      value: admin?.email || "-" },
+            { label: "Username",   value: admin?.username ? `@${admin.username}` : "-" },
             { label: "Role",       value: "Administrator" },
-            { label: "Gender",     value: admin?.gender ? admin.gender.charAt(0) + admin.gender.slice(1).toLowerCase() : "—" },
+            { label: "Gender",     value: admin?.gender ? admin.gender.charAt(0) + admin.gender.slice(1).toLowerCase() : "-" },
           ].map(({ label, value }) => (
-            <div key={label} className="flex items-center justify-between py-3 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-              <span className="text-xs text-white/30 font-semibold">{label}</span>
-              <span className="text-sm font-bold text-white/70">{value}</span>
+            <div key={label} className="flex items-center justify-between py-3 border-b" style={{ borderColor: "rgba(14,14,16,0.005)" }}>
+              <span className="text-xs text-ink/30 font-semibold">{label}</span>
+              <span className="text-sm font-bold text-ink/70">{value}</span>
             </div>
           ))}
           <div className="pt-3 flex items-start gap-3 rounded-xl p-3 mt-2" style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.1)" }}>
             <FiAlertCircle size={14} className="text-blue-400 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-white/25 leading-relaxed">Profile editing will be available once the backend provides update endpoints.</p>
+            <p className="text-[11px] text-ink/25 leading-relaxed">Profile editing will be available once the backend provides update endpoints.</p>
           </div>
         </div>
       )}
 
       {/* ── CREATE ADMIN TAB ── */}
       {activeTab === "create-admin" && (
-        <div className="rounded-3xl p-6 space-y-5" style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="rounded-3xl p-6 space-y-5" style={{ background: "#0d0d14", border: "1px solid rgba(14,14,16,0.006)" }}>
           <div>
-            <h3 className="text-base font-black text-white" style={{ fontFamily: "'Playfair Display',serif" }}>Create New Admin</h3>
-            <p className="text-xs text-white/30 mt-1">Create a new administrator account for the JOVO admin panel.</p>
+            <h3 className="text-base font-semibold text-ink" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>Create New Admin</h3>
+            <p className="text-xs text-ink/30 mt-1">Create a new administrator account for the JOVO admin panel.</p>
           </div>
 
           {/* Success banner */}
@@ -214,16 +214,16 @@ const Settings = () => {
                 <FiCheck size={15} className="text-emerald-400" />
               </div>
               <div>
-                <p className="text-sm font-black text-emerald-400">Admin created successfully!</p>
-                <p className="text-xs text-white/30 mt-0.5">The new admin can now log in with their credentials.</p>
+                <p className="text-sm font-semibold text-emerald-400">Admin created successfully!</p>
+                <p className="text-xs text-ink/30 mt-0.5">The new admin can now log in with their credentials.</p>
               </div>
             </div>
           )}
 
           {caErrors.general && (
             <div className="flex items-center gap-2 rounded-2xl px-4 py-3" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
-              <FiAlertCircle size={14} className="text-red-400 shrink-0" />
-              <p className="text-red-400 text-sm">{caErrors.general}</p>
+              <FiAlertCircle size={14} className="text-brand shrink-0" />
+              <p className="text-brand text-sm">{caErrors.general}</p>
             </div>
           )}
 
@@ -231,77 +231,77 @@ const Settings = () => {
             {/* First + Last name */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">First Name</label>
+                <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-ink/30 mb-1.5">First Name</label>
                 <div className={inputCls(caErrors.firstName)}>
-                  <FiUser size={14} className={caErrors.firstName ? "text-red-400 shrink-0" : "text-white/25 shrink-0"} />
+                  <FiUser size={14} className={caErrors.firstName ? "text-brand shrink-0" : "text-ink/25 shrink-0"} />
                   <input type="text" placeholder="First" value={caForm.firstName}
                     onChange={(e) => setCA("firstName", e.target.value)}
-                    className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20 min-w-0" />
+                    className="flex-1 text-sm text-ink outline-none bg-transparent placeholder-white/20 min-w-0" />
                 </div>
-                {caErrors.firstName && <p className="text-xs text-red-400 mt-1">{caErrors.firstName}</p>}
+                {caErrors.firstName && <p className="text-xs text-brand mt-1">{caErrors.firstName}</p>}
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Last Name</label>
+                <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-ink/30 mb-1.5">Last Name</label>
                 <div className={inputCls(caErrors.lastName)}>
-                  <FiUser size={14} className={caErrors.lastName ? "text-red-400 shrink-0" : "text-white/25 shrink-0"} />
+                  <FiUser size={14} className={caErrors.lastName ? "text-brand shrink-0" : "text-ink/25 shrink-0"} />
                   <input type="text" placeholder="Last" value={caForm.lastName}
                     onChange={(e) => setCA("lastName", e.target.value)}
-                    className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20 min-w-0" />
+                    className="flex-1 text-sm text-ink outline-none bg-transparent placeholder-white/20 min-w-0" />
                 </div>
-                {caErrors.lastName && <p className="text-xs text-red-400 mt-1">{caErrors.lastName}</p>}
+                {caErrors.lastName && <p className="text-xs text-brand mt-1">{caErrors.lastName}</p>}
               </div>
             </div>
 
             {/* Email */}
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Email Address</label>
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-ink/30 mb-1.5">Email Address</label>
               <div className={inputCls(caErrors.email)}>
-                <FiMail size={14} className={caErrors.email ? "text-red-400 shrink-0" : "text-white/25 shrink-0"} />
+                <FiMail size={14} className={caErrors.email ? "text-brand shrink-0" : "text-ink/25 shrink-0"} />
                 <input type="email" placeholder="admin@jovomart.com" value={caForm.email}
                   onChange={(e) => setCA("email", e.target.value)}
-                  className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20 min-w-0" />
+                  className="flex-1 text-sm text-ink outline-none bg-transparent placeholder-white/20 min-w-0" />
               </div>
-              {caErrors.email && <p className="text-xs text-red-400 mt-1">{caErrors.email}</p>}
+              {caErrors.email && <p className="text-xs text-brand mt-1">{caErrors.email}</p>}
             </div>
 
             {/* Username */}
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Username</label>
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-ink/30 mb-1.5">Username</label>
               <div className={inputCls(caErrors.username)}>
-                <span className="text-white/25 text-sm font-bold shrink-0">@</span>
+                <span className="text-ink/25 text-sm font-bold shrink-0">@</span>
                 <input type="text" placeholder="choose a username" value={caForm.username}
                   onChange={(e) => setCA("username", e.target.value.replace(/\s/g, ""))}
-                  className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20 min-w-0" />
+                  className="flex-1 text-sm text-ink outline-none bg-transparent placeholder-white/20 min-w-0" />
               </div>
-              {caErrors.username && <p className="text-xs text-red-400 mt-1">{caErrors.username}</p>}
+              {caErrors.username && <p className="text-xs text-brand mt-1">{caErrors.username}</p>}
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-1.5">Password</label>
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-ink/30 mb-1.5">Password</label>
               <div className={inputCls(caErrors.password)}>
-                <FiLock size={14} className={caErrors.password ? "text-red-400 shrink-0" : "text-white/25 shrink-0"} />
+                <FiLock size={14} className={caErrors.password ? "text-brand shrink-0" : "text-ink/25 shrink-0"} />
                 <input type={showCaPw ? "text" : "password"} placeholder="Min. 8 characters" value={caForm.password}
                   onChange={(e) => setCA("password", e.target.value)}
-                  className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20 min-w-0" />
+                  className="flex-1 text-sm text-ink outline-none bg-transparent placeholder-white/20 min-w-0" />
                 <button type="button" onClick={() => setShowCaPw(!showCaPw)} tabIndex={-1}
-                  className="text-white/25 hover:text-white/50 transition-colors shrink-0">
+                  className="text-ink/25 hover:text-ink/50 transition-colors shrink-0">
                   {showCaPw ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
-              {caErrors.password && <p className="text-xs text-red-400 mt-1">{caErrors.password}</p>}
+              {caErrors.password && <p className="text-xs text-brand mt-1">{caErrors.password}</p>}
             </div>
 
             {/* Gender */}
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-2">Gender</label>
+              <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-ink/30 mb-2">Gender</label>
               <div className="grid grid-cols-2 gap-3">
                 {GENDER_OPTIONS.map((g) => (
                   <button key={g} type="button" onClick={() => setCA("gender", g)}
                     className={`flex items-center justify-center gap-2 py-3 rounded-2xl border text-sm font-bold transition-all duration-200 ${
                       caForm.gender === g
-                        ? "text-white border-[#FF8C00]/50"
-                        : "text-white/30 border-white/8 hover:border-white/15 hover:text-white/50"
+                        ? "text-ink border-[#0E0E10]/50"
+                        : "text-ink/30 border-ink/10 hover:border-ink/10 hover:text-ink/50"
                     }`}
                     style={caForm.gender === g ? { background: "rgba(255,140,0,0.1)" } : {}}>
                     <span>{g === "MALE" ? "👨" : "👩"}</span>
@@ -309,14 +309,14 @@ const Settings = () => {
                   </button>
                 ))}
               </div>
-              {caErrors.gender && <p className="text-xs text-red-400 mt-1">{caErrors.gender}</p>}
+              {caErrors.gender && <p className="text-xs text-brand mt-1">{caErrors.gender}</p>}
             </div>
 
             <button type="submit" disabled={caLoading}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm text-white transition-all hover:opacity-90 hover:scale-[1.005] active:scale-[0.995] disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)", boxShadow: "0 6px 24px rgba(180,34,37,0.3)" }}>
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-semibold text-sm text-ink transition-all hover:opacity-90 hover:scale-[1.005] active:scale-[0.995] disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: "linear-gradient(135deg,#0E0E10,#0E0E10)", boxShadow: "0 6px 24px rgba(180,34,37,0.3)" }}>
               {caLoading
-                ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Creating admin...</>
+                ? <><div className="w-4 h-4 border-2 border-ink/10 border-t-white rounded-full animate-spin" /> Creating admin...</>
                 : <><FiUserPlus size={15} /> Create Admin Account</>}
             </button>
           </form>
@@ -325,16 +325,16 @@ const Settings = () => {
 
       {/* ── SECURITY TAB ── */}
       {activeTab === "security" && (
-        <div className="rounded-3xl p-6 space-y-5" style={{ background: "#0d0d14", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="rounded-3xl p-6 space-y-5" style={{ background: "#0d0d14", border: "1px solid rgba(14,14,16,0.006)" }}>
           <div>
-            <h3 className="text-base font-black text-white" style={{ fontFamily: "'Playfair Display',serif" }}>Change Password</h3>
-            <p className="text-xs text-white/30 mt-1">A reset code will be sent to your admin email address.</p>
+            <h3 className="text-base font-semibold text-ink" style={{ fontFamily: "'Instrument Sans', sans-serif" }}>Change Password</h3>
+            <p className="text-xs text-ink/30 mt-1">A reset code will be sent to your admin email address.</p>
           </div>
 
           {pwErrors.general && (
             <div className="flex items-center gap-2 rounded-2xl px-4 py-3" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
-              <FiAlertCircle size={14} className="text-red-400 shrink-0" />
-              <p className="text-red-400 text-sm">{pwErrors.general}</p>
+              <FiAlertCircle size={14} className="text-brand shrink-0" />
+              <p className="text-brand text-sm">{pwErrors.general}</p>
             </div>
           )}
 
@@ -342,72 +342,72 @@ const Settings = () => {
           <div className="flex items-center gap-2">
             {[1, 2].map((s) => (
               <div key={s} className="flex items-center gap-2">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${pwStep >= s ? "text-white" : "bg-white/5 text-white/25"}`}
-                  style={pwStep >= s ? { background: "linear-gradient(135deg,#B42225,#FF8C00)" } : {}}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold transition-all ${pwStep >= s ? "text-ink" : "bg-sand text-ink/25"}`}
+                  style={pwStep >= s ? { background: "linear-gradient(135deg,#0E0E10,#0E0E10)" } : {}}>
                   {pwStep > s ? <Check size={10} /> : s}
                 </div>
-                <span className={`text-[10px] font-bold ${pwStep === s ? "text-white/60" : "text-white/20"}`}>
+                <span className={`text-[10px] font-bold ${pwStep === s ? "text-ink/60" : "text-ink/20"}`}>
                   {s === 1 ? "Send Code" : "New Password"}
                 </span>
-                {s < 2 && <div className="w-8 h-px bg-white/10" />}
+                {s < 2 && <div className="w-8 h-px bg-sand" />}
               </div>
             ))}
           </div>
 
           {/* Step 1 */}
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-2">Email Address</label>
+            <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-ink/30 mb-2">Email Address</label>
             <div className="flex gap-2">
               <div className={`flex-1 ${inputCls(pwErrors.email)}`}>
-                <FiMail size={14} className="text-white/25 shrink-0" />
+                <FiMail size={14} className="text-ink/25 shrink-0" />
                 <input type="email" value={pwForm.email} onChange={e => setPwForm(p => ({ ...p, email: e.target.value }))}
-                  placeholder="Your admin email" className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20" />
+                  placeholder="Your admin email" className="flex-1 text-sm text-ink outline-none bg-transparent placeholder-white/20" />
               </div>
               <button onClick={handleSendCode} disabled={pwLoading}
-                className="px-4 rounded-2xl text-xs font-black text-white transition-all hover:opacity-90 disabled:opacity-50 shrink-0"
-                style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}>
+                className="px-4 rounded-2xl text-xs font-semibold text-ink transition-all hover:opacity-90 disabled:opacity-50 shrink-0"
+                style={{ background: "linear-gradient(135deg,#0E0E10,#0E0E10)" }}>
                 {pwLoading && pwStep === 1 ? "Sending..." : "Send Code"}
               </button>
             </div>
-            {pwErrors.email && <p className="text-xs text-red-400 mt-1">{pwErrors.email}</p>}
+            {pwErrors.email && <p className="text-xs text-brand mt-1">{pwErrors.email}</p>}
           </div>
 
           {/* Step 2 */}
           {pwStep === 2 && (
             <>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-2">Verification Code</label>
+                <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-ink/30 mb-2">Verification Code</label>
                 <div className={inputCls(pwErrors.code)}>
-                  <FiShield size={14} className="text-white/25 shrink-0" />
+                  <FiShield size={14} className="text-ink/25 shrink-0" />
                   <input type="text" value={pwForm.code} onChange={e => setPwForm(p => ({ ...p, code: e.target.value }))}
-                    placeholder="6-digit code from email" className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20" />
+                    placeholder="6-digit code from email" className="flex-1 text-sm text-ink outline-none bg-transparent placeholder-white/20" />
                 </div>
-                {pwErrors.code && <p className="text-xs text-red-400 mt-1">{pwErrors.code}</p>}
+                {pwErrors.code && <p className="text-xs text-brand mt-1">{pwErrors.code}</p>}
               </div>
               {[
                 { key: "newPassword",     label: "New Password",     placeholder: "Min. 8 characters" },
                 { key: "confirmPassword", label: "Confirm Password", placeholder: "Repeat new password" },
               ].map(({ key, label, placeholder }) => (
                 <div key={key}>
-                  <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-2">{label}</label>
+                  <label className="block text-[10px] font-semibold uppercase tracking-[2px] text-ink/30 mb-2">{label}</label>
                   <div className={inputCls(pwErrors[key])}>
-                    <FiLock size={14} className="text-white/25 shrink-0" />
+                    <FiLock size={14} className="text-ink/25 shrink-0" />
                     <input type={showPw ? "text" : "password"} value={pwForm[key]}
                       onChange={e => setPwForm(p => ({ ...p, [key]: e.target.value }))}
-                      placeholder={placeholder} className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20" />
+                      placeholder={placeholder} className="flex-1 text-sm text-ink outline-none bg-transparent placeholder-white/20" />
                     {key === "newPassword" && (
-                      <button type="button" onClick={() => setShowPw(!showPw)} className="text-white/25 hover:text-white/60 transition-colors">
+                      <button type="button" onClick={() => setShowPw(!showPw)} className="text-ink/25 hover:text-ink/60 transition-colors">
                         {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     )}
                   </div>
-                  {pwErrors[key] && <p className="text-xs text-red-400 mt-1">{pwErrors[key]}</p>}
+                  {pwErrors[key] && <p className="text-xs text-brand mt-1">{pwErrors[key]}</p>}
                 </div>
               ))}
               <button onClick={handleResetPassword} disabled={pwLoading}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black text-sm text-white transition-all hover:opacity-90 disabled:opacity-50"
-                style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)", boxShadow: "0 6px 24px rgba(180,34,37,0.3)" }}>
-                {pwLoading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Updating...</> : "Update Password"}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm text-ink transition-all hover:opacity-90 disabled:opacity-50"
+                style={{ background: "linear-gradient(135deg,#0E0E10,#0E0E10)", boxShadow: "0 6px 24px rgba(180,34,37,0.3)" }}>
+                {pwLoading ? <><div className="w-4 h-4 border-2 border-ink/10 border-t-white rounded-full animate-spin" /> Updating...</> : "Update Password"}
               </button>
             </>
           )}
@@ -416,10 +416,10 @@ const Settings = () => {
 
       {/* Danger zone */}
       <div className="rounded-3xl p-6" style={{ background: "#0d0d14", border: "1px solid rgba(239,68,68,0.1)" }}>
-        <h3 className="text-sm font-black text-red-400/70 mb-1">Danger Zone</h3>
-        <p className="text-xs text-white/25 mb-4">Sign out of the admin panel on this device.</p>
+        <h3 className="text-sm font-semibold text-brand/70 mb-1">Danger Zone</h3>
+        <p className="text-xs text-ink/25 mb-4">Sign out of the admin panel on this device.</p>
         <button onClick={handleLogout}
-          className="flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-black text-red-400 hover:bg-red-500 hover:text-white transition-all duration-200"
+          className="flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-semibold text-brand hover:bg-brand hover:text-ink transition-all duration-200"
           style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}>
           <FiLogOut size={15} /> Sign Out
         </button>

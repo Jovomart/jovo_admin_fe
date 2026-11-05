@@ -19,35 +19,33 @@ const Topbar = ({ onMenuClick }) => {
   const initials    = displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-4 border-b border-white/5"
-      style={{ background: "rgba(10,10,15,0.95)", backdropFilter: "blur(20px)" }}>
-      <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-4 px-4 sm:px-6 py-3.5 border-b border-ink/[.07] bg-cream/85 backdrop-blur-xl">
+      <div className="flex items-center gap-3">
         <button onClick={onMenuClick}
-          className="lg:hidden w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-white/60 hover:text-white transition">
+          className="lg:hidden w-9 h-9 rounded-full bg-white flex items-center justify-center text-ink/60 ring-1 ring-ink/[.06] hover:text-ink transition">
           <FiMenu size={18} />
         </button>
         <div>
-          <h1 className="text-base font-black text-white" style={{ fontFamily: "'Playfair Display', serif" }}>{page.title}</h1>
-          <p className="text-xs text-white/30 hidden sm:block">{page.sub}</p>
+          <h1 className="font-display text-[17px] font-semibold text-ink leading-tight">{page.title}</h1>
+          <p className="text-[11px] text-ink/40 hidden sm:block">{page.sub}</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* Notifications */}
-        <button className="relative w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition">
+        <button className="relative w-9 h-9 rounded-full bg-white flex items-center justify-center text-ink/45 ring-1 ring-ink/[.06] hover:text-ink transition">
           <FiBell size={16} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#B42225]" />
+          <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-brand" />
         </button>
 
         {/* Admin avatar */}
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-black"
-            style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)" }}>
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-ink text-[11px] font-semibold bg-peach">
             {initials}
           </div>
           <div className="hidden sm:block">
-            <p className="text-xs font-bold text-white/80 leading-tight">{displayName}</p>
-            <p className="text-[10px] text-white/30">Administrator</p>
+            <p className="text-[12px] font-semibold text-ink leading-tight">{displayName}</p>
+            <p className="text-[10px] text-ink/40">Administrator</p>
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@
 import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
-import { FiMail, FiLock, FiAlertCircle } from "react-icons/fi";
+import { FiMail, FiLock, FiAlertCircle, FiArrowRight } from "react-icons/fi";
 import { AuthContext } from "../context/AuthContext";
 import logo from "../assets/images/logo.png";
 
@@ -42,121 +42,115 @@ const Login = () => {
   };
 
   const inputCls = (field) =>
-    `flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-all duration-200 ${
+    `flex items-center gap-3 rounded-full px-4 py-3.5 transition-all duration-200 ${
       errors[field]
-        ? "border-red-500/50 bg-red-500/5"
-        : "border-white/8 bg-white/4 focus-within:border-[#FF8C00]/50 focus-within:bg-white/6 focus-within:shadow-[0_0_0_3px_rgba(255,140,0,0.08)]"
+        ? "bg-white ring-1 ring-brand/30"
+        : "bg-white ring-1 ring-ink/[.06] focus-within:ring-ink/20"
     }`;
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#0a0a0f" }}>
-      {/* ── Left panel ── */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-col items-center justify-center p-16"
-        style={{ background: "linear-gradient(135deg,#080810 0%,#0d0d1a 40%,#100a0a 70%,#1a0505 100%)" }}>
-        <div className="absolute inset-0 opacity-[0.04]" style={{
-          backgroundImage: "radial-gradient(circle,rgba(255,255,255,0.8) 1px,transparent 1px)",
-          backgroundSize: "32px 32px",
-        }} />
-        <div className="absolute -top-32 -right-32 w-125 h-125 rounded-full opacity-15 pointer-events-none"
-          style={{ background: "radial-gradient(circle,#B42225,transparent 65%)" }} />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full opacity-10 pointer-events-none"
-          style={{ background: "radial-gradient(circle,#FF8C00,transparent 65%)" }} />
+    <div className="min-h-screen flex bg-cream">
+      {/* Left panel */}
+      <div className="relative hidden lg:flex lg:w-1/2 flex-col items-center justify-center overflow-hidden p-14">
+        <div className="absolute inset-0 bg-gradient-to-br from-lilac via-sky/70 to-cream" />
+        <div className="pointer-events-none absolute -left-24 -top-24 h-80 w-80 rounded-full bg-white/40 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -right-16 h-72 w-72 rounded-full bg-peach/60 blur-3xl" />
 
-        <div className="relative z-10 text-center max-w-sm">
-          <img src={logo} alt="JOVO" style={{ width: "197px", height: "57px", objectFit: "cover", margin: "0 auto 12px", filter: "drop-shadow(0 0 20px rgba(255,140,0,0.35))" }} />
-          <h1 className="text-4xl font-black mb-4 text-white leading-tight" style={{ fontFamily: "'Playfair Display',serif" }}>
-            <span style={{ background: "linear-gradient(90deg,#FF8C00,#FFB347)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Admin Panel
-            </span>
+        <div className="relative z-10 max-w-sm">
+          <div className="mb-8 inline-flex items-center rounded-[18px] bg-white/80 p-3 ring-1 ring-ink/[.05]">
+            <img src={logo} alt="JOVO" style={{ width: "132px", height: "38px", objectFit: "cover" }} />
+          </div>
+
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-ink/45">JOVO Admin</p>
+          <h1 className="mt-3 font-display text-[34px] font-semibold leading-[1.08] tracking-[-0.03em] text-ink">
+            Run the whole campus marketplace from one place.
           </h1>
-          <p className="text-white/30 text-sm leading-relaxed mb-10">
-            Manage sellers, delivery options, and platform settings from one powerful dashboard.
+          <p className="mt-4 text-[13px] leading-relaxed text-ink/55">
+            Manage sellers, delivery options and platform settings without the clutter.
           </p>
-          <div className="space-y-3 text-left">
+
+          <div className="mt-8 space-y-2.5">
             {[
               { icon: "🏪", text: "Approve & manage seller applications" },
               { icon: "🚚", text: "Configure delivery options & pricing" },
               { icon: "📊", text: "Monitor platform performance" },
               { icon: "🔐", text: "Secure role-based access control" },
             ].map(({ icon, text }) => (
-              <div key={text} className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <span className="text-lg shrink-0">{icon}</span>
-                <span className="text-white/50 text-sm">{text}</span>
+              <div key={text} className="flex items-center gap-3 rounded-2xl bg-white/65 px-4 py-3 ring-1 ring-ink/[.04]">
+                <span className="text-base shrink-0">{icon}</span>
+                <span className="text-[12.5px] text-ink/60">{text}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ── Right form ── */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-12 md:px-12 lg:px-16">
-        <div className="w-full max-w-105">
-          {/* Mobile logo */}
-          <div className="flex items-center justify-center mb-10 lg:hidden">
-            <img src={logo} alt="JOVO" style={{ width: "177px", height: "57px", objectFit: "cover", filter: "drop-shadow(0 0 16px rgba(255,140,0,0.3))" }} />
+      {/* Right form */}
+      <div className="flex w-full items-center justify-center px-5 py-12 sm:px-10 lg:w-1/2 lg:px-16">
+        <div className="w-full max-w-[400px]">
+          <div className="mb-10 flex justify-center lg:hidden">
+            <div className="inline-flex items-center rounded-[16px] bg-white p-3 ring-1 ring-ink/[.06]">
+              <img src={logo} alt="JOVO" style={{ width: "120px", height: "36px", objectFit: "cover" }} />
+            </div>
           </div>
 
           <div className="mb-8">
-            <p className="text-[10px] font-bold tracking-[3px] uppercase text-white/25 mb-2">Administrator Access</p>
-            <h2 className="text-3xl font-black text-white" style={{ fontFamily: "'Playfair Display',serif" }}>Sign In</h2>
-            <p className="text-sm text-white/30 mt-1">Access the JOVO admin dashboard</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-ink/40">Administrator access</p>
+            <h2 className="mt-2 font-display text-[30px] font-semibold tracking-[-0.03em] text-ink">Sign in</h2>
+            <p className="mt-1.5 text-[13px] text-ink/50">Access the JOVO admin dashboard</p>
           </div>
 
           {errors.general && (
-            <div className="flex items-center gap-2 rounded-2xl px-4 py-3 mb-6"
-              style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
-              <FiAlertCircle size={15} className="text-red-400 shrink-0" />
-              <p className="text-red-400 text-sm">{errors.general}</p>
+            <div className="mb-5 flex items-center gap-2 rounded-2xl bg-white px-4 py-3 ring-1 ring-brand/25">
+              <FiAlertCircle size={15} className="shrink-0 text-brand" />
+              <p className="text-[12.5px] text-brand">{errors.general}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            {/* Email */}
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-[2px] text-white/30 mb-2">Email Address</label>
+              <label className="admin-label mb-2 block" htmlFor="admin-email">Email address</label>
               <div className={inputCls("email")}>
-                <FiMail size={15} className={errors.email ? "text-red-400 shrink-0" : "text-white/25 shrink-0"} />
-                <input type="email" placeholder="admin@jovomart.com" value={form.email}
+                <FiMail size={15} className={errors.email ? "shrink-0 text-brand" : "shrink-0 text-ink/30"} />
+                <input id="admin-email" type="email" placeholder="admin@jovomart.com" value={form.email}
                   onChange={(e) => { setForm({ ...form, email: e.target.value }); setErrors((p) => ({ ...p, email: "" })); }}
-                  className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20" />
+                  className="flex-1 bg-transparent text-[13.5px] text-ink placeholder-ink/30" />
               </div>
-              {errors.email && <p className="text-xs text-red-400 mt-1.5 ml-1">{errors.email}</p>}
+              {errors.email && <p className="ml-1 mt-1.5 text-[11.5px] text-brand">{errors.email}</p>}
             </div>
 
-            {/* Password */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-[10px] font-black uppercase tracking-[2px] text-white/30">Password</label>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="admin-label" htmlFor="admin-password">Password</label>
                 <button type="button" onClick={() => navigate("/forgot-password")}
-                  className="text-[10px] font-bold text-[#FF8C00]/70 hover:text-[#FF8C00] transition-colors">
+                  className="text-[11px] font-semibold text-ink/45 transition-colors hover:text-ink">
                   Forgot password?
                 </button>
               </div>
               <div className={inputCls("password")}>
-                <FiLock size={15} className={errors.password ? "text-red-400 shrink-0" : "text-white/25 shrink-0"} />
-                <input type={showPw ? "text" : "password"} placeholder="Enter your password" value={form.password}
+                <FiLock size={15} className={errors.password ? "shrink-0 text-brand" : "shrink-0 text-ink/30"} />
+                <input id="admin-password" type={showPw ? "text" : "password"} placeholder="Enter your password" value={form.password}
                   onChange={(e) => { setForm({ ...form, password: e.target.value }); setErrors((p) => ({ ...p, password: "" })); }}
-                  className="flex-1 text-sm text-white outline-none bg-transparent placeholder-white/20" />
+                  className="flex-1 bg-transparent text-[13.5px] text-ink placeholder-ink/30" />
                 <button type="button" onClick={() => setShowPw(!showPw)} tabIndex={-1}
-                  className="text-white/25 hover:text-white/60 transition-colors">
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                  className="text-ink/30 transition-colors hover:text-ink/70">
                   {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {errors.password && <p className="text-xs text-red-400 mt-1.5 ml-1">{errors.password}</p>}
+              {errors.password && <p className="ml-1 mt-1.5 text-[11.5px] text-brand">{errors.password}</p>}
             </div>
 
             <button type="submit" disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-sm text-white transition-all duration-200 hover:opacity-90 hover:scale-[1.005] active:scale-[0.995] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-              style={{ background: "linear-gradient(135deg,#B42225,#FF8C00)", boxShadow: "0 6px 28px rgba(180,34,37,0.35)" }}>
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-ink py-3.5 text-[13px] font-semibold text-cream transition-transform duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
               {loading
-                ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Signing in...</>
-                : "Sign In to Dashboard"}
+                ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-cream/30 border-t-cream" /> Signing in...</>
+                : <>Sign in to dashboard <FiArrowRight size={15} /></>}
             </button>
           </form>
 
-          <p className="text-center text-xs text-white/15 mt-8">
-            JOVO Admin Panel — Restricted Access Only
+          <p className="mt-8 text-center text-[11px] text-ink/30">
+            JOVO Admin Panel - Restricted Access Only
           </p>
         </div>
       </div>

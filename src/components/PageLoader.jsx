@@ -18,36 +18,26 @@ const PageLoader = () => {
   if (!show) return null;
 
   return (
-    <>
-      <style>{`
-        @keyframes admin-pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.06);opacity:0.85} }
-        @keyframes admin-bar { 0%{width:0%} 40%{width:60%} 70%{width:80%} 100%{width:100%} }
-        @keyframes d1 { 0%,80%,100%{transform:scale(0)} 40%{transform:scale(1)} }
-        @keyframes d2 { 0%,100%{transform:scale(0)} 20%,60%{transform:scale(1)} }
-        @keyframes d3 { 0%,20%,100%{transform:scale(0)} 60%{transform:scale(1)} }
-      `}</style>
-      <div className="fixed inset-0 z-99999 flex flex-col items-center justify-center"
-        style={{ background: "#0a0a0f", opacity: fading ? 0 : 1, transition: "opacity 0.4s ease", pointerEvents: fading ? "none" : "all" }}>
-        <div className="absolute inset-0 opacity-[0.04]" style={{
-          backgroundImage: "radial-gradient(circle,rgba(255,255,255,0.8) 1px,transparent 1px)",
-          backgroundSize: "32px 32px",
-        }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle,rgba(180,34,37,0.15),transparent 70%)" }} />
-        <div className="relative z-10 flex flex-col items-center gap-5">
-          <img src={logo} alt="JOVO" style={{ width: "197px", height: "57px", objectFit: "cover", animation: "admin-pulse 1s ease-in-out infinite", filter: "drop-shadow(0 0 20px rgba(255,140,0,0.4))" }} />
-          <p className="text-white/20 text-[12px] font-bold tracking-[4px] uppercase">Admin Panel</p>
-          <div className="w-36 h-0.5 bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full rounded-full" style={{ background: "linear-gradient(90deg,#B42225,#FF8C00)", animation: "admin-bar 1s ease-out forwards" }} />
-          </div>
-          <div className="flex gap-1.5">
-            {[{a:"d1"},{a:"d2"},{a:"d3"}].map(({a},i)=>(
-              <div key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: i===1?"#FF8C00":"#B42225", animation:`${a} 1s ease-in-out infinite` }} />
-            ))}
-          </div>
+    <div className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-cream"
+      style={{ opacity: fading ? 0 : 1, transition: "opacity 0.4s ease", pointerEvents: fading ? "none" : "all" }}>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full pointer-events-none"
+        style={{ background: "radial-gradient(circle,rgba(220,203,246,0.55),transparent 70%)" }} />
+      <div className="relative z-10 flex flex-col items-center gap-5">
+        <div className="flex items-center justify-center rounded-[20px] bg-white/70 ring-1 ring-ink/[.06] px-5 py-3">
+          <img src={logo} alt="JOVO" style={{ width: "150px", height: "44px", objectFit: "cover", animation: "admin-pulse 1s ease-in-out infinite" }} />
+        </div>
+        <p className="font-display text-[11px] font-semibold tracking-[0.34em] uppercase text-ink/45">Admin Panel</p>
+        <div className="w-36 h-[3px] bg-ink/10 rounded-full overflow-hidden">
+          <div className="h-full rounded-full bg-ink" style={{ animation: "admin-bar 1s ease-out forwards" }} />
+        </div>
+        <div className="flex gap-1.5">
+          {["d1", "d2", "d3"].map((a, i) => (
+            <div key={a} className="w-1.5 h-1.5 rounded-full"
+              style={{ background: i === 1 ? "#C6ACEF" : "#0E0E10", animation: `${a} 1s ease-in-out infinite` }} />
+          ))}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
